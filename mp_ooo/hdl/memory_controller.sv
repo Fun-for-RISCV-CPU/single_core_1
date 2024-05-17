@@ -9,14 +9,16 @@ import rv32i_types::*;
     input   logic   [31:0]  dmem_rdata,
     input   logic           dmem_resp,
     input ls_mem_bus_t mem_input,
-    output logic [1:0] mem_state
+    input logic [3:0] dmem_wmask_sb,
+    output logic [1:0] mem_state,
+    output logic servicing_a_store
 );
 
 logic [1:0] state_next;
 ls_mem_bus_t mem_inp_intermediate;
 
 always_ff @(posedge clk) begin
-    if(rst || branch_mispredict) begin
+    if(rst || ((branch_mispredict) && (!servicing_a_store))) begin
         mem_state <= mem_idle;
         mem_inp_intermediate <= 'x;
     end
@@ -27,6 +29,36 @@ always_ff @(posedge clk) begin
     end
 end
 
+always_ff @(posedge clk) begin
+if(rst) begin
+servicing_a_store <= '0;
+end
+  else begin
+      if(mem_state == mem_resp_wait) begin
+          servicing_a_store <= servicing_a_store;
+      end
+      
+      else if(mem_state == mem_idle) begin
+      
+          if(mem_input.valid && (mem_input.dmem_rmask == '0)) begin
+        servicing_a_store <= 1'b0;
+        
+        end
+        else if(mem_input.valid && (mem_input.dmem_wmask == '0)) begin
+        servicing_a_store <= 1'b0;
+        end
+        else if(~mem_input.valid && (dmem_wmask_sb != '0)) begin
+          servicing_a_store <= 1'b1;
+        end
+        else servicing_a_store <= 1'b0;
+      
+      end
+      
+      else servicing_a_store <= 1'b0;
+        
+  end
+end
+
 always_comb begin
     state_next = mem_state;
     mem_rob_data_o.ready = 1'b0;
@@ -34,21 +66,35 @@ always_comb begin
     mem_rob_data_o.rd_data = 'x;
     mem_rob_data_o.dmem_rdata = 'x;
     mem_rob_data_o.store = 'x;
+ 
     
     case (mem_state)
     mem_idle: begin
-        if(mem_input.valid) begin
+        if(mem_input.valid && (mem_input.dmem_rmask == '0)) begin
+        state_next = rob_store_update;
+        
+        end
+        else if(mem_input.valid && (mem_input.dmem_wmask == '0)) begin
         state_next = mem_resp_wait;
         end
+        else if(~mem_input.valid && (dmem_wmask_sb != '0)) begin
+         state_next = mem_resp_wait;
+        end
         else state_next = mem_idle;
+    end
+    
+    rob_store_update: begin
+           mem_rob_data_o.ready = 1'b1;
+           mem_rob_data_o.rob_id = mem_inp_intermediate.rob_id;
+           mem_rob_data_o.store = 1'b1;
+           state_next = mem_idle;
     end
     mem_resp_wait: begin
         if(dmem_resp) begin
             state_next = mem_idle;
-            mem_rob_data_o.ready = 1'b1;
-            mem_rob_data_o.rob_id = mem_inp_intermediate.rob_id;
-            if(mem_inp_intermediate.dmem_wmask != '0) mem_rob_data_o.store = 1'b1;
-            else if(mem_inp_intermediate.dmem_rmask != '0) begin
+            if(mem_inp_intermediate.dmem_rmask != '0) begin
+                mem_rob_data_o.ready = 1'b1;
+                mem_rob_data_o.rob_id = mem_inp_intermediate.rob_id;
                 mem_rob_data_o.store = 1'b0;
                 mem_rob_data_o.dmem_rdata = dmem_rdata;
                 unique case (mem_inp_intermediate.funct3)

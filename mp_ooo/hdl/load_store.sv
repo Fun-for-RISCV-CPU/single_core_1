@@ -17,7 +17,8 @@ import rv32i_types::*;
     output  logic   [3:0]   dmem_rmask,
     output  logic   [3:0]   dmem_wmask,
     output  logic   [31:0]  dmem_wdata,
-    input logic[1:0] mem_state
+    input logic[1:0] mem_state,
+    input logic store_buffer_full, store_buffer_empty
 );
 
 logic [31:0] dmem_store_addr, dmem_load_addr, dmem_store_wdata;
@@ -152,7 +153,7 @@ always_comb begin
 
     if(store_res_station[0].valid 
     && (store_res_station[0].rob_id_dest == rob_tail_ptr)
-    && (mem_state == mem_idle)) begin
+    && (mem_state == mem_idle) && (!store_buffer_full) && (!branch_mispredict)) begin
         mem_input.dmem_wmask = store_res_station[0].dmem_wmask;
         dmem_wmask = store_res_station[0].dmem_wmask;
         mem_input.dmem_wdata = store_res_station[0].dmem_wdata;
@@ -168,7 +169,7 @@ always_comb begin
     end
     else if(load_res_station[0].valid 
     && (load_res_station[0].ready_for_mem)
-    && (mem_state == mem_idle)) begin
+    && (mem_state == mem_idle) && (store_buffer_empty)) begin
         mem_input.dmem_wmask = '0;
          dmem_wmask = '0;
         mem_input.dmem_wdata = 'x;

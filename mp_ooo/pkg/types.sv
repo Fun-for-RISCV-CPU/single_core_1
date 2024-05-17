@@ -232,7 +232,7 @@ package rv32i_types;
     
      typedef enum bit [1:0] {
         mem_idle  = 2'b00,
-        mem_req  = 2'b01,
+        rob_store_update  = 2'b01,
         mem_resp_wait = 2'b10
     } mem_controller_states;
     

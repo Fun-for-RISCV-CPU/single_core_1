@@ -109,7 +109,7 @@ import cache_types::*;
     end endgenerate
 
     always_ff @ (posedge clk) begin
-        if (rst || branch_mispredict) begin
+        if (rst || branch_mispredict && (wmask == 4'b0000 && ufp_wmask == 4'b000)) begin
             state <= idle;
             address <= '0;
             rmask <= '0;

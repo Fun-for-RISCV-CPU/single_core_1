@@ -1,4 +1,4 @@
-module instruction_q #(parameter width = 66, parameter depth = 4)
+module instruction_q #(parameter width = 66, parameter depth = 8)
 (
     input logic clk,
     input logic rst,

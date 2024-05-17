@@ -29,6 +29,7 @@ import rv32i_types::*;
     input logic               bmem_rvalid
 );
     logic           branch_mispredict, in_flight_mem;
+    logic           servicing_a_store;
     logic  [1:0] mem_state;
     ls_mem_bus_t    mem_input;
     logic           valid_inst, load_mispredict;
@@ -65,17 +66,18 @@ import rv32i_types::*;
     //Need this to come from decode
     ls_q_entry        ls_q_o, ls_q_inst1;
     
+    
     // mem variables 
     logic   [31:0]  imem_addr;
     logic   [3:0]   imem_rmask;
     logic   [31:0]  imem_rdata;
     logic           imem_resp;
 
-    logic   [31:0]  dmem_addr;
-    logic   [3:0]   dmem_rmask;
-    logic   [3:0]   dmem_wmask;
+    logic   [31:0]  dmem_addr, dmem_addr_ls, dmem_addr_sb;
+    logic   [3:0]   dmem_rmask, dmem_rmask_ls, dmem_rmask_sb;
+    logic   [3:0]   dmem_wmask, dmem_wmask_ls, dmem_wmask_sb;
     logic   [31:0]  dmem_rdata;
-    logic   [31:0]  dmem_wdata;
+    logic   [31:0]  dmem_wdata, dmem_wdata_ls, dmem_wdata_sb;
     logic           dmem_resp;
 
     // i cache and d cache varibles 
@@ -103,6 +105,10 @@ import rv32i_types::*;
     // assign i_cache_ready = bmem_ready;
 
     // assign d_cache_ready = 1'b0;
+    
+    //Additional mem variables for store buffer
+    logic store_buffer_empty, store_buffer_full;
+    
 
     cache_arbiter cache_arbiter(
         .clk(clk),
@@ -299,10 +305,12 @@ import rv32i_types::*;
     .empty_load(empty_load),
     .load_rob_data_bus(load_rob_data_bus),
     .store_rob_data_bus(store_rob_data_bus),
-    .dmem_addr(dmem_addr),
-    .dmem_rmask(dmem_rmask),
-    .dmem_wmask(dmem_wmask),
-    .dmem_wdata(dmem_wdata)
+    .dmem_addr(dmem_addr_ls),
+    .dmem_rmask(dmem_rmask_ls),
+    .dmem_wmask(dmem_wmask_ls),
+    .dmem_wdata(dmem_wdata_ls),
+    .store_buffer_empty(store_buffer_empty),
+    .store_buffer_full(store_buffer_full)
     );
     
     memory_controller memory_controller(
@@ -314,8 +322,42 @@ import rv32i_types::*;
     .dmem_rdata(dmem_rdata),
     .dmem_resp(dmem_resp),
     .mem_state(mem_state),
-    .mem_input(mem_input)
+    .mem_input(mem_input),
+    .dmem_wmask_sb(dmem_wmask_sb),
+    .servicing_a_store(servicing_a_store)
     );
+    
+    store_buffer store_buffer(
+    .clk(clk),
+    .rst(rst),
+    .mem_input(mem_input),
+    .mem_state(mem_state),
+     .dmem_addr(dmem_addr_sb),
+    .dmem_rmask(dmem_rmask_sb),
+    .dmem_wmask(dmem_wmask_sb),
+    .dmem_wdata(dmem_wdata_sb),
+     .store_buffer_empty(store_buffer_empty),
+    .store_buffer_full(store_buffer_full)
+    );
+    
+    always_comb begin
+          dmem_addr = 'x;
+           dmem_wmask = 'x;
+           dmem_rmask = '0;
+            dmem_wdata = '0;
+        if(mem_input.valid && (dmem_rmask_ls != '0)) begin
+        dmem_addr = {dmem_addr_ls[31:2], 2'b00};
+        dmem_wmask = '0;
+        dmem_rmask = dmem_rmask_ls;
+        dmem_wdata = dmem_wdata_ls;
+        end
+        else if(dmem_wmask_sb != '0) begin
+            dmem_addr = {dmem_addr_sb[31:2], 2'b00};
+            dmem_wmask = dmem_wmask_sb;
+            dmem_rmask = '0;
+            dmem_wdata = dmem_wdata_sb;
+        end
+    end
     
     
 endmodule : cpu
