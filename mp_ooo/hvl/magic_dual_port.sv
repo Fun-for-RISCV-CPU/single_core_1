@@ -1,5 +1,5 @@
 module magic_dual_port #(
-    parameter MEMFILE = "memory_4.lst"
+    parameter MEMFILE = "memory.lst"
 )(
     mem_itf.mem itf_i,
     mem_itf.mem itf_d

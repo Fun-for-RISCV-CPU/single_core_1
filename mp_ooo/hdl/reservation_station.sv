@@ -1,20 +1,21 @@
 module reservation_station
 import rv32i_types::*;
-#(parameter size = EX_UNITS, parameter rob_size = ROB_ID_SIZE)
+#(parameter size = 8, parameter rob_size = 5, parameter rob_data_bus_size = 32)
 (
     input logic clk,
     input logic rst,
-    input logic branch_mispredict,
     //input logic load_inst1,
     input inst_decode inst1,
     input logic[rob_size-1:0] rob_id_dest,
-    input rob_entry_t [2**rob_size-1:0] rob_data_bus,
+    input rob_entry_t [rob_data_bus_size-1:0] rob_data_bus,
     input ex_data_bus_t alu_data_bus[size],
     output logic full,
     output rs_d rs_data[size],
     output logic[size - 1:0][31:0] rvfi_rs1_v, rvfi_rs2_v
 
 );
+
+
 
 //Inputs explanation
 //load_inst1 tells the reservation stations that some instruction needs to be loaded in from the instruction queue, we can increase the width of this signal for superscalarity
@@ -27,6 +28,10 @@ import rv32i_types::*;
 //output logic full tells the decoder that all reservation stations are full..do not dequeue anything
 //rs_data is the o/p of the reservation station to be used by the ex units
 //rvfi_rs1_v and rvfi_rs2_v have correct values for rvfi source operands
+
+
+
+
 
 int next_rs;
 int busy_stations;
@@ -67,18 +72,12 @@ always_comb begin
       
     end
     
-    if((busy_stations == size - 1 && inst1.valid) || busy_stations == size) full = 1'b1;
+    if(busy_stations == size) full = 1'b1;
 
 end
-
-
-
-
-
 always_ff @(posedge clk) begin
     // rst signal clears all the data in rservation station
-    // Flush all stations on mispredict
-    if (rst || branch_mispredict) begin
+    if(rst) begin
         for(int i=0; i < size; i++) begin
             rs_data[i].valid <= '0;
             rs_data[i].rs1_v <= 'x;
@@ -106,7 +105,6 @@ always_ff @(posedge clk) begin
             rs_data[next_rs].alu_cmp <= 1'b0;
             rs_data[next_rs].rob_id_dest <= rob_id_dest;
             rs_data[next_rs].funct3 <= inst1.funct3;
-            //rd_data[next_rs].rd_choice <= 1'b0;
             unique case (inst1.opcode)
             
             op_b_lui: begin
@@ -118,8 +116,8 @@ always_ff @(posedge clk) begin
                 rs_data[next_rs].r1 <= 1'b1;
                 rs_data[next_rs].r2 <= 1'b1;
                 rs_data[next_rs].alu_cmp <= 1'b0;
-                //rs_data[next_rs].rd_choice <= 1'b0;
-                //rs_data[next_rs].pc_sel <= 1'b0;
+                rs_data[next_rs].rd_choice <= 1'b0;
+                rs_data[next_rs].pc_sel <= 1'b0;
             end 
 
             op_b_auipc: begin
@@ -131,15 +129,15 @@ always_ff @(posedge clk) begin
                 rs_data[next_rs].r1 <= 1'b1;
                 rs_data[next_rs].r2 <= 1'b1;
                 rs_data[next_rs].alu_cmp <= 1'b0;
-                //rs_data[next_rs].rd_choice <= 1'b0;
-                //rs_data[next_rs].pc_sel <= 1'b0;
+                rs_data[next_rs].rd_choice <= 1'b0;
+                rs_data[next_rs].pc_sel <= 1'b0;
             end
 
             op_b_imm: begin                
                 rs_data[next_rs].rs2_v <= inst1.i_imm;
                 //rs_data[next_rs].busy <= 1'b1;
                 rs_data[next_rs].r2 <= 1'b1;
-                //rs_data[next_rs].pc_sel <= 1'b0;
+                rs_data[next_rs].pc_sel <= 1'b0;
                 // Here you check if regfile has data which is ready
                 if(inst1.rs1.ready) begin
                     rs_data[next_rs].rs1_v <= inst1.rs1.rd_data;
@@ -160,17 +158,17 @@ always_ff @(posedge clk) begin
                 unique case (inst1.funct3)
                 slt: begin
                     rs_data[next_rs].alu_cmp <= 1'b1;
-                    //rs_data[next_rs].rd_choice <= 1'b0;
+                    rs_data[next_rs].rd_choice <= 1'b0;
                     rs_data[next_rs].cmpop <= blt;
                 end
                 sltu: begin
                     rs_data[next_rs].alu_cmp <= 1'b1;
-                    //rs_data[next_rs].rd_choice <= 1'b0;
+                    rs_data[next_rs].rd_choice <= 1'b0;
                     rs_data[next_rs].cmpop <= bltu;
                 end
                 sr: begin
                     rs_data[next_rs].alu_cmp <= 1'b0;
-                    //rs_data[next_rs].rd_choice <= 1'b0;
+                    rs_data[next_rs].rd_choice <= 1'b0;
                     if (inst1.funct7[5]) begin
                         rs_data[next_rs].aluop <= alu_sra;
                     end else begin
@@ -179,7 +177,7 @@ always_ff @(posedge clk) begin
                 end
                 default: begin
                     rs_data[next_rs].alu_cmp <= 1'b0;
-                    //rs_data[next_rs].rd_choice <= 1'b0;
+                    rs_data[next_rs].rd_choice <= 1'b0;
                     rs_data[next_rs].aluop <= inst1.funct3;    
                 end
                 endcase
@@ -187,7 +185,7 @@ always_ff @(posedge clk) begin
 
             op_b_reg: begin
                 //rs_data[next_rs].busy <= 1'b1;
-                //rs_data[next_rs].pc_sel <= 1'b0;
+                rs_data[next_rs].pc_sel <= 1'b0;
                 if(inst1.rs1.ready) begin
                     rs_data[next_rs].rs1_v <= inst1.rs1.rd_data;
                     rs_data[next_rs].r1 <= 1'b1;
@@ -221,17 +219,17 @@ always_ff @(posedge clk) begin
                 unique case (inst1.funct3)
                 slt: begin
                     rs_data[next_rs].alu_cmp <= 1'b1;
-                    // rs_data[next_rs].rd_choice <= 1'b0;
+                    rs_data[next_rs].rd_choice <= 1'b0;
                     rs_data[next_rs].cmpop <= blt;
                 end
                 sltu: begin
                     rs_data[next_rs].alu_cmp <= 1'b1;
-                    // rs_data[next_rs].rd_choice <= 1'b0;
+                    rs_data[next_rs].rd_choice <= 1'b0;
                     rs_data[next_rs].cmpop <= bltu;
                 end
                 sr: begin
                     rs_data[next_rs].alu_cmp <= 1'b0;
-                    // rs_data[next_rs].rd_choice <= 1'b0;
+                    rs_data[next_rs].rd_choice <= 1'b0;
                     if (inst1.funct7[5]) begin
                         rs_data[next_rs].aluop <= alu_sra;
                     end else begin
@@ -240,7 +238,7 @@ always_ff @(posedge clk) begin
                 end
                 add: begin
                     rs_data[next_rs].alu_cmp <= 1'b0;
-                    // rs_data[next_rs].rd_choice <= 1'b0;
+                    rs_data[next_rs].rd_choice <= 1'b0;
                     if (inst1.funct7[5]) begin
                         rs_data[next_rs].aluop <= alu_sub;
                     end else begin
@@ -249,7 +247,7 @@ always_ff @(posedge clk) begin
                 end
                 default: begin
                     rs_data[next_rs].alu_cmp <= 1'b0;
-                    // rs_data[next_rs].rd_choice <= 1'b0;
+                    rs_data[next_rs].rd_choice <= 1'b0;
                     rs_data[next_rs].aluop <= inst1.funct3;    
                 end
                 endcase
@@ -257,22 +255,25 @@ always_ff @(posedge clk) begin
             end
 
             op_b_jal: begin
-                //rs_data[next_rs].pc_sel <= 1'b1; // ??
+                rs_data[next_rs].pc_sel <= 1'b1;
                 rs_data[next_rs].aluop <= alu_add;
                 rs_data[next_rs].rs1_v <= inst1.pc;
                 rs_data[next_rs].rs2_v <= inst1.j_imm;
+                //rs_data[next_rs].busy <= 1'b1;
                 rs_data[next_rs].r1 <= 1'b1;
                 rs_data[next_rs].r2 <= 1'b1;
                 rs_data[next_rs].alu_cmp <= 1'b0;
+                rs_data[next_rs].rd_choice <= 1'b1;
             end
 
             op_b_jalr: begin
-                //rs_data[next_rs].pc_sel <= 1'b1;
+                rs_data[next_rs].pc_sel <= 1'b1;
                 rs_data[next_rs].aluop <= alu_add;
                 rs_data[next_rs].rs2_v <= inst1.i_imm;
+                //rs_data[next_rs].busy <= 1'b1;
                 rs_data[next_rs].r2 <= 1'b1;
                 rs_data[next_rs].alu_cmp <= 1'b0;
-                // rs_data[next_rs].rd_choice <= 1'b1;
+                rs_data[next_rs].rd_choice <= 1'b1;
                 if(inst1.rs1.ready) begin
                     rs_data[next_rs].rs1_v <= inst1.rs1.rd_data;
                     rs_data[next_rs].r1 <= 1'b1;
@@ -291,8 +292,11 @@ always_ff @(posedge clk) begin
 
             op_b_br: begin
                 rs_data[next_rs].cmpop <= inst1.funct3;
-                //rs_data[next_rs].pc_sel <= 1'b1;
-                rs_data[next_rs].alu_cmp <= 1'b1; // Do compare function
+                rs_data[next_rs].pc_sel <= 1'b1;
+                rs_data[next_rs].aluop <= alu_add;
+                //rs_data[next_rs].busy <= 1'b1;
+                rs_data[next_rs].alu_cmp <= 1'b0;
+                rs_data[next_rs].rd_choice <= 1'b0;
 
                 if(inst1.rs1.ready) begin
                     rs_data[next_rs].rs1_v <= inst1.rs1.rd_data;
@@ -366,8 +370,8 @@ always_ff @(posedge clk) begin
            // rvfi_rs1_v <= rs_data[i].rs1_v;
             // rvfi_rs2_v <= rs_data[i].rs2_v;
             rs_data[i].valid <= '0;
-            rs_data[i].rs1_v <= 'x;
-            rs_data[i].rs2_v <= 'x;
+            rs_data[i].rs1_v <= '0;
+            rs_data[i].rs2_v <= '0;
             rs_data[i].rob_id <= 'x;
             rs_data[i].rob_id2 <= 'x;
             rs_data[i].rob_id_dest <= 'x;

@@ -1,8 +1,7 @@
-module instruction_q #(parameter width = 66, parameter depth = 4)
+module instruction_q #(parameter width = 65, parameter depth = 6)
 (
     input logic clk,
     input logic rst,
-    input logic branch_mispredict,
     input logic [width-1:0] inst_in,
     input logic [1:0] action,
     output logic [width-1:0] inst_out,
@@ -27,23 +26,11 @@ int front, rear;
 assign full = (front == ((rear+1) % depth));
 assign empty = (front == -1);
 
-// always_comb begin
-//     if (action == 2'b10 || action == 2'b11) begin
-//         inst_out = instruction_arr[front];
-//     end 
-//     else begin
-//         inst_out[63:0] = 'x;
-//         inst_out[64] = 1'b0;
-          // inst_out[65] = 1'b0;
-//     end
-// end
 
 always_ff @(posedge clk) begin
     inst_out[63:0] <= 'x;
     inst_out[64] <= 1'b0;
-    inst_out[65] <= 1'b0;
-    // Reset queue on branch or jump
-    if(rst || branch_mispredict) begin
+    if(rst) begin
         front <= -1;
         rear <= -1;
         for(int i=0; i< depth; i++) begin
@@ -54,9 +41,9 @@ always_ff @(posedge clk) begin
         if(action == 2'b00) begin
             front <= front;
             rear <= rear;
-           // for(int i=0; i< depth; i++) begin
-              //  instruction_arr[i] <= instruction_arr[i];
-           // end
+            for(int i=0; i< depth; i++) begin
+                instruction_arr[i] <= instruction_arr[i];
+            end
         end
 
         else if(action == 2'b01) begin
@@ -69,7 +56,7 @@ always_ff @(posedge clk) begin
                     instruction_arr[(rear + 1) % depth] <= inst_in;
                 end
                 else begin
-                   // instruction_arr[i] <= instruction_arr[i];
+                    instruction_arr[i] <= instruction_arr[i];
                 end
             end
         end
@@ -81,9 +68,9 @@ always_ff @(posedge clk) begin
                 rear <= -1;
             end
             else front <= (front + 1) % depth;
-           // for(int i=0; i< depth; i++) begin
-              //  instruction_arr[i] <= instruction_arr[i];
-           // end
+            for(int i=0; i< depth; i++) begin
+                instruction_arr[i] <= instruction_arr[i];
+            end
         end
 
         else if(action == 2'b11) begin
@@ -96,7 +83,7 @@ always_ff @(posedge clk) begin
                     instruction_arr[(rear + 1) % depth] <= inst_in;
                 end
                 else begin
-                   // instruction_arr[i] <= instruction_arr[i];
+                    instruction_arr[i] <= instruction_arr[i];
                 end
             end
         end

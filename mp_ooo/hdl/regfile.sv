@@ -1,10 +1,9 @@
 module regfile 
 import rv32i_types::*;
-#(parameter decode_ports = 1, parameter data_wb_ports = 1, parameter rob_depth_bits = ROB_ID_SIZE)
+#(parameter decode_ports = 1, parameter data_wb_ports = 1, parameter rob_depth_bits = 5)
 (
     input   logic                                    clk,
     input   logic                                    rst,
-    input   logic                                    branch_mispredict,
     //input   logic                                    regf_we,
     //input   logic               [31:0]               rd_data,
     input   logic               [4:0]                rs1_addr, rs2_addr,
@@ -25,12 +24,13 @@ import rv32i_types::*;
     always_ff @(posedge clk) begin
       // Reset
       if (rst) begin
-          for (int i = 0; i < 32; i++) begin
-              reg_file[i].rd_data <= '0;
-              reg_file[i].rob_id <= 'x;
-              reg_file[i].ready <= 1'b1;
-          end
+            for (int i = 0; i < 32; i++) begin
+                reg_file[i].rd_data <= '0;
+                reg_file[i].rob_id <= 'x;
+                reg_file[i].ready <= 1'b1;
+            end
         end 
+
       
       else begin 
 
@@ -47,16 +47,9 @@ import rv32i_types::*;
         
           // Logic for updating use ROB ready bit
           // Must be separate conditional to resolve case of simultaneous update to same address
-          // and update in case of branching
 
-          // Make all ready if flush due to branch
-          if (branch_mispredict) begin
-            for (int i = 0; i < 32; i++) begin
-              reg_file[i].ready <= 1'b1;
-            end
-          end
           // Simultaneous Update
-          else if (decode_rob_bus[0].ready && data_wb_bus[0].ready && decode_rob_bus[0].rd_addr != '0) begin
+          if (decode_rob_bus[0].ready && data_wb_bus[0].ready && decode_rob_bus[0].rd_addr != '0) begin
               // Same address -> Decode takes precidence
               if ((decode_rob_bus[0].rd_addr == data_wb_bus[0].rd_addr)) begin
                 // Update ready bit

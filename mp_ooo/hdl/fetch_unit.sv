@@ -12,22 +12,14 @@ import rv32i_types::*;
     output  logic [31:0]        imem_addr,
     output  logic [3:0]         imem_rmask,
     output  logic               valid_inst,
-    output  logic               branch_pred,
-    output  logic [63:0]        inst_out,
-    input    logic [31:0] pcout_at_fetch,
-    input logic branch_pred_fetch,
-    output logic [31:0] pc_at_fetch
+    output  logic [63:0]        inst_out
 );
     
-    logic           imem_stall, queue_full;
+    logic           imem_stall;
     fetch_reg_1_t   fetch_1_reg, fetch_1_reg_next;
 
     always_ff @(posedge clk) begin
-        if (rst || branch_mispredict) begin
-            fetch_1_reg <= '0;
-        end else begin
-            fetch_1_reg <= fetch_1_reg_next;
-        end
+        fetch_1_reg <= fetch_1_reg_next;
     end
 
     fetch_1 fetch_stage_1(
@@ -39,18 +31,13 @@ import rv32i_types::*;
         .fetch_1_reg(fetch_1_reg),
         .fetch_1_reg_next(fetch_1_reg_next),
         .imem_addr(imem_addr),
-        .imem_rmask(imem_rmask),
-        .pcout_at_fetch(pcout_at_fetch),
-        .branch_pred_fetch(branch_pred_fetch),
-        .pc_at_fetch(pc_at_fetch),
-        .queue_full(queue_full)
+        .imem_rmask(imem_rmask)
     );
 
 
     fetch_2 fetch_stage_2(
         .clk(clk),
         .rst(rst),
-        .branch_mispredict(branch_mispredict),
         .imem_resp(imem_resp),
         .inst_in(imem_rdata),
         .fetch_1_reg(fetch_1_reg),
@@ -58,9 +45,7 @@ import rv32i_types::*;
         .reservation_full(reservation_full),
         .inst_out(inst_out),
         .imem_stall(imem_stall),
-        .rob_full(rob_full),
-        .queue_full(queue_full),
-        .branch_pred(branch_pred)
+        .rob_full(rob_full)
     );
     
     

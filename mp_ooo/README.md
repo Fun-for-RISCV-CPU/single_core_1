@@ -25,7 +25,6 @@ problem. For more details and documentation, visit the `docs` folder. Inside, yo
 - [GUIDE.md](./docs/GUIDE.md) - Some tips and resources for this MP.
 - [ADVANCED_FEATURES.md](./docs/ADVANCED_FEATURES.md) - List of advanced features and their associated point values.
 - [WHAT_IS_AN_OOO.md](./docs/WHAT_IS_AN_OOO.md) - Basic overview of an OoO processor.
-- [TEST_CASES.md](./docs/TEST_CASES.md) - Overview of the released testcases
 
 # Introduction
 
@@ -122,8 +121,6 @@ These are not intended to be very long. A single page (single-spaced) will be mo
 
 The points awarded for each testcase will be split into two categories: *Correctness* and *Relative Performance Score (RPS)*. **The following points are all tentative**.
 
-Check out [TEST_CASES.md](./docs/TEST_CASES.md) for a list of the currently released test cases. This list may not be final, and we will run some hidden test cases as well.
-
 | Benchmark  | Correctness |    RPS    |
 |------------|-------------|-----------|
 | Coremark   |   2.5       |    2.5    |
@@ -185,48 +182,6 @@ This is the same magic memory model you are familiar with from mp_pipeline. It h
 
 ## Competition Memory
 
-You will use banked memory for the competition. You ar **required** to use this new memory mode. Unlike previous memory models used throughout the semester, this model supports **multiple outstanding requests**. This means you can send multiple requests before the first response comes back from memory. Furthermore, if you issue multiple read requests, they might come back in a different order than you sent the requests. Writes will **not** be handled out of order.
-
-You are free to use this feature or not at your discretion. It may help performance significantly when paired with other advanced features. If you prefer, you can ignore this feature and use it very similarly to previous memory models which only supported one outstanding request. 
-
-**Make sure to modify generate_memory_file.sh - it should have ADDRESSABILITY=32**
-
-<p align="center">
-  <img src="docs/images/bmem_single_read.svg"/>
-  <p align="center">Single Read Request</p>
-</p>
-
-<p align="center">
-  <img src="docs/images/bmem_single_write.svg"/>
-  <p align="center">Single Write Request</p>
-</p>
-
-<p align="center">
-  <img src="docs/images/bmem_read_queue_full.svg"/>
-  <p align="center">Read Queue Full</p>
-</p>
-
-<p align="center">
-  <img src="docs/images/bmem_write_queue_full.svg"/>
-  <p align="center">Write Queue Full</p>
-</p>
-
-<p align="center">
-  <img src="docs/images/bmem_read_ooo.svg"/>
-  <p align="center">Out-Of-Order Read Response</p>
-</p>
-
-<p align="center">
-  <img src="docs/images/bmem_read_after_write.svg"/>
-  <p align="center">Mixed Reads and Writes to the Same Destination</p>
-</p>
-
-## Competition Parameters
-For our competition autograder to correctly synthesize and run your processor, we need to know certian things about your cpu. Inside `options.json` there are a few parameters that you will need to set:
-- `clock` - Clock period of your processor in picoseconds (ps). Make sure your processor can synthesize at this frequency, otherwise the autograder wont run your code!
-- `m_ext` - Denotes whether your processor should run code compiled for the RISC-V M (multiply/divide) extension. Value: true/false.
-- `c_ext` - Denotes whether your processor should run code compiled for the RISC-V C (compressed) extension. Value: true/false.
-- `f_ext` - Denotes whether your processor should run code compiled for the RISC-V F (floating point) extension. Value: true/false.
-- `bmem_0_on_x` - Specifies the value banked memory should return when loading from an uninitialized address. Possibly necessary for various speculative memory execution schemes. `false`: return `X`. `true`: return `0`.
+Will be posted before CP2 deadline. You will use this in CP3 onward. It will be very similar to what you used in mp_cache.
 
 Good Luck! :)
