@@ -1,0 +1,567 @@
+    1  ls
+    2  cd mp_ooo/
+    3  git status
+    4  cd backup_files/
+    5  cp ../hdl/btb.sv btb_backup2.sv
+    6  vi ../pkg/types.sv 
+    7  vi ../hdl/cpu.sv 
+    8  cd ../lint/
+    9  make lint 
+   10  vi reports/lint.rpt 
+   11  make lint 
+   12  vi reports/lint.rpt 
+   13  make lint 
+   14  vi reports/lint.rpt 
+   15  make lint 
+   16  vi reports/lint.rpt 
+   17  make lint 
+   18  vi reports/lint.rpt 
+   19  make lint 
+   20  vi reports/lint.rpt 
+   21  make lint 
+   22  vi reports/lint.rpt 
+   23  make lint 
+   24  vi reports/lint.rpt 
+   25  make lint 
+   26  cd ../sim/
+   27  make run_top_tb PROG=../testcode/bubblesort.c 
+   28  vi ../hdl/cpu.sv 
+   29  make run_top_tb PROG=../testcode/bubblesort.c 
+   30  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+   31  vi ../hdl/cpu.sv 
+   32  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+   33  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+   34  vi ../hdl/cpu.sv 
+   35  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+   36  vi /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/
+   37  vi /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/dw_div.pdf 
+   38  evince /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/dw_div.pdf 
+   39  cd ../sim/
+   40  cd ../lint/
+   41  make lint 
+   42  vi reports/lint.rpt 
+   43  make lint 
+   44  vi reports/lint.rpt 
+   45  make lint 
+   46  vi reports/lint.rpt 
+   47  make lint 
+   48  cd ../sim/
+   49  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+   50  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+   51  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+   52  make run_top_tb PROG=../testcode/competition_suite/dna
+   53  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+   54  make run_top_tb PROG=../testcode/coremark.elf 
+   55  git status
+   56  git add ../hdl/btb.sv
+   57  git add ../hdl/cpu.sv
+   58  git add ../hdl/load_store.sv
+   59  git add ../hdl/rob.sv
+   60  git add ../pkg/types.sv
+   61  git commit -m "Implemented tournament branch"
+   62  git push
+   63  git checkout main
+   64  git pull
+   65  ls
+   66  vi ../hdl/btb.sv 
+   67  vi ../pkg/types.sv 
+   68  vi ../hdl/load_store.sv 
+   69  cd ../lint/
+   70  make lint 
+   71  vi reports/lint.rpt 
+   72  make lint 
+   73  vi reports/lint.rpt 
+   74  make lint
+   75  vi reports/lint.rpt 
+   76  make lint 
+   77  vi reports/lint.rpt 
+   78  git status
+   79  git restore ../hdl/load_store.sv
+   80  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+   81  ls
+   82  cd mp_ooo/
+   83  cd lint/
+   84  make lint 
+   85  pwd
+   86  cd ../sim/
+   87  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+   88  pwd
+   89  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+   90  make run_top_tb PROG=../testcode/coremark.elf 
+   91  vi Makefile 
+   92  git status
+   93  git restore ../hdl/btb.sv
+   94  git restore ../hdl/load_store.sv 
+   95  git checkout load_speculation
+   96  git status
+   97  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+   98  ls
+   99  cd mp_ooo/
+  100  ls
+  101  cd sim/
+  102  make run_top_tb PROG=../testcode/coremark.elf 
+  103  cd ../sram/
+  104  make
+  105  pwd
+  106  cd ../sim/
+  107  make run_top_tb PROG=../testcode/coremark.elf 
+  108  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  109  cd mp_ooo/
+  110  cd sim/
+  111  cd ../lint/
+  112  make lint 
+  113  cd ../sim/
+  114  make run_top_tb PROG=../testcode/coremark.elf 
+  115  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim/
+  116  make run_top_tb PROG=../testcode/coremark.elf 
+  117  vi ../hvl/top_tb.sv 
+  118  make run_top_tb PROG=../testcode/coremark.elf 
+  119  vi ../hvl/top_tb.sv 
+  120  make run_top_tb PROG=../testcode/coremark.elf 
+  121  pwd
+  122  cd ../hdl/
+  123  cd ../backup_files/
+  124  cp ../hdl/btb.sv .
+  125  ls
+  126  cd ../sim/
+  127  make run_top_tb PROG=../testcode/coremark.elf 
+  128  cd ../lint/
+  129  make lint 
+  130  vi reports/lint.rpt 
+  131  make lint 
+  132  vi reports/lint.rpt 
+  133  make lint 
+  134  vi reports/lint.rpt 
+  135  make lint 
+  136  vi reports/lint.rpt 
+  137  vi reports/W415_Report.rpt 
+  138  make lint 
+  139  cd ../sim/
+  140  make run_top_tb PROG=../testcode/coremark.elf 
+  141  cd ../lint/
+  142  make lint 
+  143  cd ../lint/
+  144  vi reports/lint.rpt 
+  145  make lint 
+  146  cd ../sim/
+  147  make run_top_tb PROG=../testcode/coremark.elf 
+  148  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  149  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  150  make run_top_tb PROG=../testcode/competition_suite/dna.elf 
+  151  make run_top_tb PROG=../testcode/competition_suite/fft.elf 
+  152  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  153  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  154  make run_top_tb PROG=../testcode/competition_suite/rsa.elf 
+  155  make run_top_tb PROG=../testcode/competition_suite/graph.elf 
+  156  make run_top_tb PROG=../testcode/competition_suite/physics.elf 
+  157  pwd
+  158  git status
+  159  cd ../backup_files/
+  160  git restore ../hdl/btb.sv ../hdl/cpu.sv ../hdl/decode.sv ../hdl/rob.sv 
+  161  cd ../lint/
+  162  make lint 
+  163  cd ../sim/
+  164  make run_top_tb PROG=../testcode/coremark.elf 
+  165  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  166  git status
+  167  git add ../hdl/btb.sv
+  168  git add ../hdl/load_store.sv
+  169  git add ../hdl/rob.sv 
+  170  git add ../pkg/types.sv 
+  171  git commit -m "Fixed load full issue"
+  172  git status
+  173  git push
+  174  history > abc
+  175  grep -r "evince"
+  176   evince /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/dw_div.pdf
+  177   evince /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/dw_div_seq.pdf 
+  178  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim/
+  179  make verdi
+  180  make verdi
+  181  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim/
+  182  make verdi
+  183  make verdi
+  184  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/
+  185  ls
+  186  cd hdl/
+  187  ls
+  188  cd ../backup_files/
+  189  cp ../hdl/btb.sv btb_perceptron.sv
+  190  cd ../hdl/
+  191  git satus
+  192  git status
+  193  git restore btb.sv 
+  194  cd ../lint/
+  195  make lint 
+  196  vi reports/lint.rpt 
+  197  make lint 
+  198  cd ../sim/
+  199  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  200  vi ../pkg/types.sv 
+  201  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  202  vi ../pkg/types.sv 
+  203  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  204  vi ../pkg/types.sv 
+  205  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  206  pwd
+  207  cd ../backup_files/
+  208  cp ../hdl/btb.sv btb_one_btb.sv
+  209  git status
+  210  git restore ../hdl/btb.sv 
+  211  cd ../lint/
+  212  make lint
+  213  vi reports/lint.rpt 
+  214  make lint
+  215  vi reports/lint.rpt 
+  216  vi ../pkg/types.sv 
+  217  make lint
+  218  cd ../sim/
+  219  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  220  vi ../pkg/types.sv 
+  221  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  222  git status
+  223  git add ../hdl/btb.sv
+  224  git add ../pkg/types.sv 
+  225  git commit -m "better indexing"
+  226  git push
+  227  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/lint/
+  228  git status
+  229  cd ../hdl/
+  230  cp ../backup_files/btb_perceptron.sv btb.sv 
+  231  cd ../lint/
+  232  make lint
+  233  vi reports/lint.rpt 
+  234  make lint
+  235  vi reports/lint.rpt 
+  236  make lint
+  237  vi reports/lint.rpt 
+  238  make lint
+  239  vi reports/lint.rpt 
+  240  make lint
+  241  vi reports/lint.rpt 
+  242  make lint
+  243  vi reports/lint.rpt 
+  244  make lint
+  245  vi reports/lint.rpt 
+  246  make lint
+  247  vi reports/lint.rpt 
+  248  cd ../sim/
+  249  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  250  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim/
+  251  make verdi
+  252  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim/
+  253  make verdi
+  254  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  255  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim/
+  256  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  257  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim
+  258  make verdi
+  259  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim/
+  260  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  261  pwd
+  262  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/
+  263  history > abc
+  264  grep -r "evince"
+  265  evince /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/dw_div_seq.pdf
+  266  evince /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/dw_div_pipe.pdf 
+  267  evince /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/dw_div_sat.pdf 
+  268  evince /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/dw_div_seq.pdf
+  269  evince /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/dw_div.pdf 
+  270  cd hdl/
+  271  pwd
+  272  cd  /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/sim_ver/
+  273  ls
+  274  cd -
+  275  cp  /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/sim_ver/DW_div_seq.v .
+  276  ls
+  277  pwd
+  278  vi DW_div_seq.v 
+  279  pwd
+  280  cp DW_div_seq.v DW_div_seq_signed.v
+  281  evince /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/dw_div.pdf 
+  282  ls
+  283  pwd
+  284  rm DW_div_seq_signed.v 
+  285  vi shift_add_multiplier.sv 
+  286  ls
+  287  mv DW_div_seq_unsigned.v DW_div_seq.sv
+  288  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/
+  289  cd lint/
+  290  make lint 
+  291  vi reports/lint.rpt 
+  292  make lint 
+  293  vi reports/lint.rpt 
+  294  pwd
+  295  cd ../hdl/
+  296  git status
+  297  vi btb.sv 
+  298  cd ../backup_files/
+  299  cp ../hdl/btb.sv btb_preceptron_complete.sv
+  300  pwd
+  301  ls
+  302  mv btb_preceptron_complete.sv btb_perceptron_complete.sv
+  303  git status
+  304  git restore ../hdl/btb.sv
+  305  cd ../lint/
+  306  vi reports/lint.rpt 
+  307  make lint 
+  308  vi reports/lint.rpt 
+  309  cd ../sim/
+  310  make run_top_tb PROG=../testcode/ooo_test.s 
+  311  pwd
+  312  ls
+  313  git status
+  314  git restore ../hdl/execution.sv
+  315  git restore ../hdl/shift_add_multiplier.sv
+  316  git restore ../pkg/types.sv
+  317  pwd
+  318  git checkout main
+  319  git pull
+  320  cd ../sim/
+  321  make run_top_tb PROG=../testcode/ooo_test.s 
+  322  pwd
+  323  cd ..
+  324  ls
+  325  cd sim/
+  326  ls
+  327  cd sim/
+  328  ls
+  329  cd ../../
+  330  ls
+  331  cd hdl/
+  332  ls
+  333  cd ../
+  334  cd hvl/
+  335  cd ..
+  336  vi options.json 
+  337  make run_top_tb PROG=../testcode/ooo_test.s 
+  338  cd sim/
+  339  make run_top_tb PROG=../testcode/ooo_test.s 
+  340  git status
+  341  cd ../
+  342  git staus
+  343  git status
+  344  pwd
+  345  cd hdl/
+  346  ls
+  347  cd ../lint/
+  348  make lint 
+  349  vi reports/lint.
+  350  vi reports/lint.rpt 
+  351  cd ../
+  352  vi options.json 
+  353  git status
+  354  pwd
+  355  cd hdl/
+  356  rm DW_div_seq.sv 
+  357  cd ../
+  358  cd lint/
+  359  make lint 
+  360  cd ../sim/
+  361  make run_top_tb PROG=../testcode/ooo_test.s 
+  362  vi Makefile 
+  363  pwd
+  364  vi set_dw_ip.py 
+  365  vi ../options.json 
+  366  make run_top_tb PROG=../testcode/ooo_test.s 
+  367  ls
+  368  cd ..
+  369  ls
+  370  cd bin/
+  371  ls
+  372  cd ..
+  373  ls
+  374  cd sim/
+  375  ls
+  376  make run_top_tb PROG=../testcode/ooo_test.s 
+  377  pwd
+  378  cd ../hdl/
+  379  vi divider.sv
+  380  cd ../lint/
+  381  make lint 
+  382  cd ../sim/
+  383  make run_top_tb PROG=../testcode/ooo_test.s 
+  384  make run_top_tb PROG=../testcode/cp1_example.s 
+  385  vi ../hvl/top_tb.sv 
+  386  make run_top_tb PROG=../testcode/cp1_example.s 
+  387  make run_top_tb PROG=../testcode/cp1_example_zhihao.s 
+  388  make run_top_tb PROG=../testcode/cp2_w_branching.s 
+  389  make run_top_tb PROG=../testcode/shtest.s 
+  390  make run_top_tb PROG=../testcode/dependency_test.s 
+  391  make run_top_tb PROG=../testcode/dependency_test2.s 
+  392  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  393  make run_top_tb PROG=../testcode/competition_suite/physics.elf 
+  394  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  395  vi sim/commit.log 
+  396  cd ../testcode/
+  397  ls
+  398  vi ooo_test.s 
+  399  cp ooo_test.s div_test.s
+  400  vi div_test.s 
+  401  cd ../sim/
+  402  make run_top_tb PROG=../testcode/div_test.s 
+  403  vi sim/commit.log 
+  404  make run_top_tb PROG=../testcode/div_test.s 
+  405  vi sim/commit.log 
+  406  make run_top_tb PROG=../testcode/div_test.s 
+  407  vi sim/commit.log 
+  408  make run_top_tb PROG=../testcode/div_test.s 
+  409  vi sim/commit.log 
+  410  make run_top_tb PROG=../testcode/div_test.s 
+  411  vi sim/commit.log 
+  412  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  413  make spike ELF=bin/physics_d.elf 
+  414  diff sim/commit.log sim/spike.log 
+  415  make spike ELF=bin/physics_d.elf 
+  416  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  417  make run_top_tb PROG=../testcode/competition_suite/rsa_d.elf 
+  418  cd ../synth/
+  419  make synth
+  420  vi reports/timing.rpt 
+  421  vi ../hdl/divider.sv 
+  422  make synth
+  423  cd ../sim/
+  424  make run_top_tb PROG=../testcode/coremarks/coremark_im.elf 
+  425  vi sim/top_tb_sim.log 
+  426  make run_top_tb PROG=../testcode/competition_suite/rsa_d.elf 
+  427  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  428  make run_top_tb PROG=../testcode/coremarks/coremark_im.elf 
+  429  vi ../hdl/btb.sv 
+  430  make run_top_tb PROG=../testcode/coremarks/coremark_im.elf 
+  431  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  432  cd ../lint/
+  433  make lint 
+  434  pwd
+  435  cd ../sim/
+  436  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  437  git status
+  438  git restore ../hdl/btb.sv 
+  439  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  440  pwd
+  441  git restore ../hdl/btb.sv 
+  442  git status
+  443  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  444  git status
+  445  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  446  git restore ../hdl/btb.sv 
+  447  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  448  vi ../hdl/divider.sv 
+  449  cd ../lint/
+  450  make lint 
+  451  cd ../synth/
+  452  make synth 
+  453  pwd
+  454  cd ../sim/
+  455  make run_top_tb PROG=../testcode/coremarks/coremark_im.elf 
+  456  make run_top_tb PROG=../testcode/competition_suite/rsa_d.elf 
+  457  vi ../hdl/divider.sv 
+  458  make run_top_tb PROG=../testcode/competition_suite/rsa_d.elf 
+  459  vi sim/commit.log 
+  460  cd ../synth/
+  461  make synth
+  462  pwd
+  463  vi ../hdl/divider.sv 
+  464  cd ../sim/
+  465  make run_top_tb PROG=../testcode/competition_suite/rsa_d.elf 
+  466  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  467  make run_top_tb PROG=../testcode/coremarks/coremark_im.elf 
+  468  make run_top_tb PROG=../testcode/competition_suite/graph.elf 
+  469  cd ../synth/
+  470  make synth
+  471  vi ../hdl/divider.sv 
+  472  cd ../sim/
+  473  make run_top_tb PROG=../testcode/coremarks/coremark_im.elf 
+  474  make run_top_tb PROG=../testcode/competition_suite/physics.elf 
+  475  pwd
+  476  make verdi
+  477  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  478  ls
+  479  cd mp_ooo/sim/
+  480  make verdi
+  481  make verdi
+  482  history > abc
+  483  grep -r "evince"
+  484  cd /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/doc/datasheets/
+  485  ls
+  486  vi dw_div_pipe.pdf 
+  487  evince dw_div_pipe.pdf 
+  488  cd -
+  489  pwd
+  490  cd ..
+  491  cd sim/
+  492  ls
+  493  vi bin/rsa_d.dis 
+  494  pwd
+  495  make verdi
+  496  pwd
+  497  cd ../synth/
+  498  make synth 
+  499  cd ../../
+  500  ls
+  501  cd ~
+  502  pwd
+  503  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim/
+  504  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  505  make run_top_tb PROG=../testcode/competition_suite/rsa_d.elf 
+  506  cd ../sim/
+  507  cd ../synth/
+  508  make synth
+  509  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/synth/
+  510  make synth
+  511  git status
+  512  git add ../hdl/execution.sv
+  513  git add ../hdl/btb.sv 
+  514  git add ../pkg/types.sv 
+  515  git add ../options.json 
+  516  git status
+  517  git add ../hvl/top_tb.sv
+  518  git add ../sim/Makefile
+  519  git add ../sim/vcs_warn.config
+  520  git commit -m "M extensions"
+  521  git push
+  522  vi ../pkg/types.sv 
+  523  cd ../sim
+  524  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  525  vi ../options.json 
+  526  cd ../sim/
+  527  cd ../synth/
+  528  make synth
+  529  ls
+  530  git status
+  531  git restore ../options.json
+  532  git restore ../pkg/types.sv
+  533  git status
+  534  git log
+  535  !
+  536  pwd
+  537  git status
+  538  git add ../hdl/divider.sv
+  539  git commit -m "Added divider"
+  540  git push
+  541  vi ../options.json 
+  542  vi ../hdl/divider.sv 
+  543  git status
+  544  git restore ../options.json
+  545  git add ./hdl/divider.sv
+  546  git status
+  547  git add ../hdl/divider.sv 
+  548  git commit -m "Correct num cycles"
+  549  git push
+  550  vi ../options.json 
+  551  vi ../hdl/divider.sv 
+  552  make synth
+  553  vi ../pkg/types.sv 
+  554  vi ../options.json 
+  555  cd ../sim/
+  556  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  557  make run_top_tb PROG=../testcode/competition_suite/rsa_d.elf 
+  558  cd ../synth/
+  559  vi ../hdl/
+  560  vi ../hdl/divider.sv 
+  561  make synth
+  562  vi ../hdl/divider.sv 
+  563  make synth
+  564  history > abc
+  565  grep -r "evince"
+  566  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/
+  567  history > abc

@@ -1,0 +1,552 @@
+    1  diff sim/commit.log sim/spike.log 
+    2  make run_top_tb PROG=../testcode/cp2_w_branching.s 
+    3  make spike ELF=bin/cp2_w_branching.elf 
+    4  diff sim/commit.log sim/spike.log 
+    5  make run_top_tb PROG=../testcode/cp1_example_zhihao.s 
+    6  make spike ELF=bin/cp1_example_zhihao.elf 
+    7  diff sim/commit.log sim/spike.log 
+    8  make run_top_tb PROG=../testcode/bubblesort.c 
+    9  make spike ELF=bin/bubblesort.elf 
+   10  diff sim/commit.log sim/spike.log 
+   11  make run_top_tb PROG=../testcode/coremark.elf 
+   12  make spike ELF=bin/coremark.elf 
+   13  diff sim/commit.log sim/spike.log  > abc
+   14  vi abc
+   15  ls
+   16  pwd
+   17  cd ece411_mp/
+   18  ls
+   19  cd sp24_ece411_No_Pre-Reqs/
+   20  ls
+   21  cd mp_ooo/
+   22  ls
+   23  cd sim/
+   24  make run_top_tb PROG=../testcode/cp1_example.s 
+   25  make spike ELF=bin/cp1_example.elf 
+   26  diff sim/commit.log sim/spike.log 
+   27  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+   28  make run_top_tb PROG=../testcode/math_ops.s 
+   29  make spike ELF=bin/cp2_isa_r.elf 
+   30  diff sim/commit.log sim/spike.log 
+   31  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+   32  make spike ELF=bin/cp2_isa_r.elf 
+   33  diff sim/commit.log sim/spike.log 
+   34  make run_top_tb PROG=../testcode/math_ops.s 
+   35  make spike ELF=bin/math_ops.elf 
+   36  make run_top_tb PROG=../testcode/shtest.s 
+   37  make spike ELF=bin/shtest.elf 
+   38  diff sim/commit.log sim/spike.log 
+   39  make run_top_tb PROG=../testcode/mp4-cp2.s 
+   40  make spike ELF=bin/mp4-cp2.elf 
+   41  diff sim/commit.log sim/s
+   42  diff sim/commit.log sim/spike.log 
+   43  make run_top_tb PROG=../testcode/branch_test.s 
+   44  make spike ELF=bin/branch_test.elf 
+   45  diff sim/commit.log sim/spike.log 
+   46  make spike ELF=bin/cp1_example_zhihao.s 
+   47  make run_top_tb PROG=../testcode/cp1_example_zhihao.s 
+   48  make spike ELF=bin/cp1_example_zhihao.elf 
+   49  diff sim/commit.log sim/spike.log 
+   50  make run_top_tb PROG=../testcode/mp4-cp3.s 
+   51  make spike ELF=bin/mp4-cp3.elf 
+   52  diff sim/commit.log sim/spike.log 
+   53  make run_top_tb PROG=../testcode/bubblesort.c 
+   54  make spike ELF=bin/mp4-cp3.elf
+   55  diff sim/commit.log sim/spike.log 
+   56  make spike ELF=bin/bubblesort.elf 
+   57  diff sim/commit.log sim/spike.log 
+   58  pwd
+   59  cd ../lint/
+   60  make lint 
+   61  cd ../sim/
+   62  make run_top_tb PROG=../testcode/bubblesort.c 
+   63  make spike ELF=bin/bubblesort.elf 
+   64  diff sim/commit.log sim/spike.log 
+   65  make run_top_tb PROG=../testcode/mp4-cp3.s 
+   66  make spike ELF=bin/mp4-cp3.elf 
+   67  diff sim/commit.log sim/spike.log 
+   68  make spike ELF=bin/coremark.elf 
+   69  diff sim/commit.log sim/spike.log 
+   70  diff sim/commit.log sim/spike.log > abc
+   71  vi abc
+   72  make run_top_tb PROG=../testcode/coremark.elf 
+   73  vi sim/commit.log 
+   74  vi abc
+   75   core   0: 3 0x60000684 (0x0345a703) x14 0x00000001 mem 0x7fffffb0
+   76  grep -r " core   0: 3 0x60000684 (0x0345a703) x14 0x00000001 mem 0x7fffffb0
+   77  grep -r " core   0: 3 0x60000684 (0x0345a703) x14 0x00000001 mem 0x7fffffb0"
+   78  make spike ELF=bin/coremark.elf 
+   79  diff sim/commit.log sim/spike.log 
+   80  diff sim/commit.log sim/spike.log > abc
+   81  vim abc
+   82  vi sim/commit.log 
+   83  vi sim/spike.log 
+   84  vi sim/commit.log 
+   85  gedit sim/commit.log 
+   86  vim sim/commit.log 
+   87  make run_top_tb PROG=../testcode/coremark.elf 
+   88  vi abc
+   89  make run_top_tb PROG=../testcode/coremark.elf 
+   90  vi sim/commit.log 
+   91  vi sim/spike.log 
+   92  vi sim/commit.log 
+   93  cd ../../
+   94  git status
+   95  git add mp_ooo/hdl/cpu.sv
+   96  git add mp_ooo/hdl/memory_controller.sv 
+   97  git add mp_ooo/hdl/load_store.sv 
+   98  git add mp_ooo/pkg/types.sv 
+   99  git commit -m "failing coremark"
+  100  git push
+  101  history > abc
+  102  grep -r "git reset"
+  103   git reset --hard 5d38bbe63679625d4e8ef4345c73339e6a0e5fbb
+  104  cd sim
+  105  make run_top_tb PROG=../testcode/coremark.elf 
+  106  cd mp_ooo/sim/
+  107  make run_top_tb PROG=../testcode/coremark.elf 
+  108  cd ece411_mp/
+  109  pwd
+  110  cd sp24_ece411_No_Pre-Reqs/mp_ooo/
+  111  ls
+  112  cd sim/
+  113  make verdi
+  114  make verdi
+  115  make verdi
+  116  make verdi
+  117  make verdi
+  118  make verdi
+  119  make verdi
+  120  make verdi
+  121  make verdi
+  122  make verdi
+  123  make verdi
+  124  make verdi
+  125  make verdi
+  126  make verdi
+  127  make verdi
+  128  vim sim/commit.log 
+  129  gvim sim/commit.log 
+  130  gvim sim/commit.log 
+  131  vim sim/commit.log 
+  132  make verdi
+  133  pwd
+  134  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  135  pwd
+  136  ls
+  137  cd mp_ooo/sim/
+  138  ls
+  139  git pull
+  140  git status
+  141  pwd
+  142  ls
+  143  make run_top_tb PROG=../testcode/competition_suite/dna.elf 
+  144  make spike ELF=bin/dna.elf 
+  145  diff sim/commit.log sim/spike.log 
+  146  diff sim/commit.log sim/spike.log > abc
+  147  vi abc
+  148  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  149  make spike ELF=bin/compression.elf 
+  150  diff sim/commit.log sim/spike.log 
+  151  make run_top_tb PROG=../testcode/competition_suite/dna.elf 
+  152  make spike ELF=bin/dna.elf 
+  153  cd ece411_mp/
+  154  ls
+  155  cd sp24_ece411_No_Pre-Reqs/
+  156  ls
+  157  git status
+  158  pwd
+  159  cd mp_ooo/
+  160  cd lint/
+  161  make lint 
+  162  vi reports/lint.rpt 
+  163  make lint 
+  164  vi reports/lint.rpt 
+  165  make lint 
+  166  vi reports/lint.rpt 
+  167  make lint 
+  168  vi reports/lint.rpt 
+  169  make lint 
+  170  cd ../sim/
+  171  make run_top_tb PROG=../testcode/cp1_example.s 
+  172  make run_top_tb PROG=../testcode/math_ops.s 
+  173  vi sim/commit.log 
+  174  make run_top_tb PROG=../testcode/math_ops.s 
+  175  pwd
+  176  make spike ELF=bin/math_ops.elf 
+  177  diff sim/commit.log sim/spike.log 
+  178  pwd
+  179  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  180  make spike ELF=bin/cp2_isa_r.elf 
+  181  diff sim/commit.log sim/spike.log 
+  182  make run_top_tb PROG=../testcode/cp1_example_zhihao.s 
+  183  make spike ELF=bin/cp1_example_zhihao.elf 
+  184  diff sim/commit.log sim/spike.log 
+  185  make spike ELF=bin/cp2_w_branching.s 
+  186  make run_top_tb PROG=../testcode/cp2_w_branching.s 
+  187  make spike ELF=bin/cp2_w_branching.elf 
+  188  diff sim/commit.log sim/spike.log
+  189  make run_top_tb PROG=../testcode/shtest.s 
+  190  make spike ELF=bin/shtest.elf 
+  191  diff sim/commit.log sim/spike.log
+  192  make run_top_tb PROG=../testcode/mp4-cp2.s 
+  193  make spike ELF=bin/mp4-cp2.elf 
+  194  diff sim/commit.log sim/spike.log
+  195  make run_top_tb PROG=../testcode/branch_test.s 
+  196  make spike ELF=bin/branch_test.elf 
+  197  diff sim/commit.log sim/spike.log
+  198  make run_top_tb PROG=../testcode/mp4-cp3.s 
+  199  make spike ELF=bin/mp4-cp3.elf 
+  200  diff sim/commit.log sim/spike.log
+  201  make run_top_tb PROG=../testcode/bubblesort.c 
+  202  make spike ELF=bin/bubblesort.elf 
+  203  diff sim/commit.log sim/spike.log
+  204  make run_top_tb PROG=../testcode/coremark.elf 
+  205  make spike ELF=bin/coremark.elf 
+  206  diff sim/commit.log sim/spike.log 
+  207  make run_top_tb PROG=../testcode/competition_suite/dna.elf 
+  208  make spike ELF=bin/dna.elf 
+  209  diff sim/commit.log sim/spike.log 
+  210  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  211  make spike ELF=bin/compression.elf 
+  212  diff sim/commit.log sim/spike.log 
+  213  make run_top_tb PROG=../testcode/competition_suite/fft.elf 
+  214  make spike ELF=bin/fft.elf 
+  215  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  216  make spike ELF=bin/mergesort.elf 
+  217  diff sim/commit.log sim/spike.log 
+  218  make run_top_tb PROG=../testcode/competition_suite/graph.elf 
+  219  make spike ELF=bin/graph.elf 
+  220  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  221  make run_top_tb PROG=../testcode/competition_suite/physics.elf 
+  222  pwd
+  223  cd ..
+  224  git status
+  225  git add hdl/cpu.sv 
+  226  git add hdl/load_store.sv 
+  227  git add hdl/memory_controller.sv 
+  228  git add pkg/types.sv 
+  229  git commit -m "Working load store with witing for older stores  to be reolved"
+  230  git push
+  231  vi hdl/rob.sv 
+  232  pwd
+  233  ls
+  234  cd ..
+  235  git checkout main
+  236  git pull
+  237  pwd
+  238  cd mp_ooo/
+  239  pwd
+  240  cd sim/
+  241  ls
+  242  python3 test_suite.py 
+  243  pwd
+  244  cd ../sram/
+  245  make 
+  246  cd ../sim/
+  247  python3 test_suite.py 
+  248  cd ../lint/
+  249  make lint
+  250  cd ../
+  251  ls
+  252  git status
+  253  cd ../sim
+  254  cd sim/
+  255  make run_top_tb PROG=../testcode/coremark.elf 
+  256  make spike ELF=bin/coremark.elf 
+  257  diff sim/commit.log sim/spike.log 
+  258  make run_top_tb PROG=../testcode/competition_suite/physics_d.elf 
+  259  make run_top_tb PROG=../testcode/competition_suite/physics.elf 
+  260  make spike ELF=bin/physics.elf 
+  261  make run_top_tb PROG=../testcode/competition_suite/sudoku.elf 
+  262  make run_top_tb PROG=../testcode/competition_suite/rsa.elf 
+  263  make run_top_tb PROG=../testcode/competition_suite/compression.elf 
+  264  make run_top_tb PROG=../testcode/competition_suite/dna.elf 
+  265  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  266  cd ../synth/
+  267  make synth 
+  268  vi synthesis.tcl 
+  269  make synth 
+  270  vi reports/timing.rpt 
+  271  vi synthesis.tcl 
+  272  make synth 
+  273  vi reports/area.rpt 
+  274  pwd
+  275  ls
+  276  cd sim
+  277  cd ../sim/
+  278  make run_top_tb PROG=../testcode/competition_suite/dna.elf 
+  279  pwd
+  280  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  281  ls
+  282  cd mp_ooo/
+  283  cd sim/
+  284  make verdi
+  285  pwd
+  286  cd ece411_mp/
+  287  ls
+  288  cd sp24_ece411_No_Pre-Reqs/
+  289  ls
+  290  cd mp_ooo/
+  291  ls
+  292  cd sim/
+  293  make run_top_tb PROG=../testcode/competition_suite/dna.elf 
+  294  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_cache_ram/
+  295  ls
+  296  vi hdl/cache.sv 
+  297  cd ../
+  298  cd mp_ooo/
+  299  ls
+  300  cd hdl/
+  301  vi adder.sv
+  302  git status
+  303  git restore decode.sv 
+  304  git restore memory_controller.sv 
+  305  git restore ../pkg/types.sv 
+  306  pwd 
+  307  cd ../sim
+  308  make run_top_tb PROG=../testcode/coremark.elf 
+  309  cd ../lint/
+  310  make lint
+  311  vi reports/lint.rpt 
+  312  make lint
+  313  git status
+  314  git restore ../hdl/load_store.sv
+  315  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  316  cd sim
+  317  cd mp_ooo/sim/
+  318  make verdi
+  319  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  320  cd mp_ooo/
+  321  git status
+  322  git add hdl/cpu.sv
+  323  git add hdl/load_store.sv 
+  324  git add hdl/memory_controller.sv 
+  325  git commit -m "load store v2 slightly improved ipc for coremark"
+  326  git push
+  327  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/lint/
+  328  make lint
+  329  cd ../sim/
+  330  make run_top_tb PROG=../testcode/shtest.s 
+  331  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  332  make run_top_tb PROG=../testcode/mp4-cp3.s 
+  333  make run_top_tb PROG=../testcode/coremark.elf 
+  334  cd ../lint/
+  335  make lint 
+  336  vi reports/lint.rpt 
+  337  make lint 
+  338  vi reports/lint.rpt 
+  339  make lint 
+  340  cd ../sim/
+  341  make run_top_tb PROG=../testcode/shtest.s 
+  342  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  343  vi sim/commit.log 
+  344  vi sim/commit.log make spike ELF=bin/cp2_isa_r.elf 
+  345   make spike ELF=bin/cp2_isa_r.elf 
+  346  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/
+  347  ls
+  348  cd lint/
+  349  make lint 
+  350  cd ../sim/
+  351  make run_top_tb PROG=../testcode/shtest.s 
+  352  make run_top_tb PROG=../testcode/math_ops.s 
+  353  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  354  make run_top_tb PROG=../testcode/mp4-cp2.s 
+  355  make run_top_tb PROG=../testcode/mp4-cp3.s 
+  356  make run_top_tb PROG=../testcode/coremark.elf 
+  357  pwd
+  358  vi ece411_mp/sp24_ece411_No_Pre-Reqs/
+  359  pwd
+  360   ece411_mp/sp24_ece411_No_Pre-Reqs/
+  361  cd  ece411_mp/sp24_ece411_No_Pre-Reqs/
+  362  cd mp_ooo/
+  363  cd sim/
+  364  ls
+  365  vi ../pkg/types.sv 
+  366  vi ../hdl/load_store.sv 
+  367  pwd
+  368  make run_top_tb PROG=../testcode/coremark.elf 
+  369  git status
+  370  cd  ece411_mp/
+  371  ls
+  372  cd sp24_ece411_No_Pre-Reqs/
+  373  ls
+  374  git status
+  375  pwd
+  376  cd mp_ooo/
+  377  ls
+  378  cd sim/
+  379  history
+  380  cd ../hdl/
+  381  vi adder.sv
+  382  cd ../lint/
+  383  make lint 
+  384  vi reports/lint.rpt 
+  385  make lint 
+  386  cd ../hdl/
+  387  grep -r "dmem_load_addr"
+  388  pwd
+  389  cd ../lint/
+  390  make lint 
+  391  vi reports/lint.rpt 
+  392  make lint 
+  393  cd ../sim/
+  394  make run_top_tb PROG=../testcode/shtest.s 
+  395  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  396  pwd
+  397  cd mp_ooo/
+  398  ls
+  399  cd sim/
+  400  make run_top_tb PROG=../testcode/coremark.elf 
+  401  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  402  make run_top_tb PROG=../testcode/coremark.elf 
+  403  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  404  ls
+  405  cd mp_ooo/
+  406  cd lint/
+  407  make lint 
+  408  vi reports/lint.rpt 
+  409  make lint 
+  410  vi reports/lint.rpt 
+  411  make lint 
+  412  vi reports/lint.rpt 
+  413  make lint 
+  414  vi reports/lint.rpt 
+  415  make lint 
+  416  vi reports/lint.rpt 
+  417  make lint 
+  418  cd ../sim/
+  419  make run_top_tb PROG=../testcode/shtest.s 
+  420  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  421  make run_top_tb PROG=../testcode/cp1_example.s 
+  422  make run_top_tb PROG=../testcode/cp1_example_zhihao.s 
+  423  make run_top_tb PROG=../testcode/cp2_w_branching.s 
+  424  make run_top_tb PROG=../testcode/math_ops.s 
+  425  make run_top_tb PROG=../testcode/cp2_w_branching.s 
+  426  make run_top_tb PROG=../testcode/mp4-cp2.s 
+  427  make run_top_tb PROG=../testcode/branch_test.s 
+  428  make run_top_tb PROG=../testcode/mp4-cp3.s 
+  429  make run_top_tb PROG=../testcode/bubblesort.c 
+  430  make run_top_tb PROG=../testcode/coremark.elf 
+  431  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  432  pwd
+  433  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/testcode/
+  434  cp cp2_isa_r.s cp2_ls_testing.s
+  435  cd ../sim/
+  436  make run_top_tb PROG=../testcode/cp2_ls_testing.s 
+  437  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  438  vi sim/commit.log 
+  439  make spike ELF=bin/cp2_isa_r.elf 
+  440  vi sim/commit.log 
+  441  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  442  vi sim/commit.log 
+  443  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  444  vi sim/commit.log 
+  445  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  446  vi sim/commit.log 
+  447  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  448  vi sim/commit.log 
+  449  make spike ELF=bin/cp2_isa_r.elf 
+  450  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  451  vi sim/commit.log 
+  452  cd ../hdl/
+  453  cd ../
+  454  ls
+  455  cd backup_files/
+  456  cp ../hdl/load_store.sv load_store_v2.sv
+  457  cd ../lint/
+  458  make lint
+  459  vi reports/lint.rpt 
+  460  make lint
+  461  cd ../sim/
+  462  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  463  make run_top_tb PROG=../testcode/coremark.elf 
+  464  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  465  cd mp_ooo/sim/
+  466  make run_top_tb PROG=../testcode/shtest.s 
+  467  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  468  pwd
+  469  cd ../backup_files/
+  470  pwd
+  471  cp ../hdl/load_store.sv load_store_v3_not_working.sv 
+  472  cd ../hdl/
+  473  cp ../backup_files/load_store_v2.sv load_store.sv 
+  474  cd ../sim/
+  475  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  476  make run_top_tb PROG=../testcode/coremark.elf 
+  477  pwd
+  478  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim/
+  479  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  480  make run_top_tb PROG=../testcode/cp2_ls_testing.s 
+  481  make run_top_tb PROG=../testcode/shtest.s 
+  482  make run_top_tb PROG=../testcode/math_ops.s 
+  483  make run_top_tb PROG=../testcode/branch_test.s 
+  484  make run_top_tb PROG=../testcode/mp4-cp2.s 
+  485  make run_top_tb PROG=../testcode/mp4-cp3.s 
+  486  make run_top_tb PROG=../testcode/bubblesort.c 
+  487  make run_top_tb PROG=../testcode/competition_suite/dna.elf 
+  488  make run_top_tb PROG=../testcode/coremark.elf 
+  489  pwd
+  490  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  491  cd mp_ooo/
+  492  ls
+  493  cd sim/
+  494  make verdi
+  495  make verdi
+  496  make verdi
+  497  make verdi
+  498  make verdi
+  499  make verdi
+  500  pwd
+  501  cd ece411_mp/sp24_ece411_No_Pre-Reqs/
+  502  ls
+  503  cd mp_ooo/
+  504  ls
+  505  cd hdl/
+  506  grep -r "rob_full"
+  507  git status
+  508  cd ../sim/
+  509  pwd
+  510  vi ../pkg/types.sv 
+  511  make run_top_tb PROG=../testcode/coremark.elf 
+  512  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/sim/
+  513  vi ../hvl/top_tb.sv 
+  514  make run_top_tb PROG=../testcode/coremark.elf 
+  515  vi ../pkg/types.sv 
+  516  vi ../hdl/load_store.sv 
+  517  make run_top_tb PROG=../testcode/coremark.elf 
+  518  pwd
+  519  vi ../hvl/top_tb.sv 
+  520  make run_top_tb PROG=../testcode/coremark.elf 
+  521  make spike ELF=bin/coremark.elf 
+  522  diff sim/commit.log sim/spike.log 
+  523  pwd
+  524  cd ../hdl/
+  525  cp ../backup_files/load_store_v3_not_working.sv load_store.sv 
+  526  vi load_store.sv 
+  527  cd ../sim/
+  528  make spike ELF=bin/coremark.elf 
+  529  make run_top_tb PROG=../testcode/coremark.elf 
+  530  pwd
+  531  vi ../hdl/load_store.sv 
+  532  vi ../pkg/types.sv 
+  533  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  534  make run_top_tb PROG=../testcode/coremark.elf 
+  535  make run_top_tb PROG=../testcode/competition_suite/dna.elf 
+  536  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  537  make run_top_tb PROG=../testcode/competition_suite/rsa.elf 
+  538  make run_top_tb PROG=../testcode/competition_suite/mergesort.elf 
+  539  make run_top_tb PROG=../testcode/competition_suite/physics.elf 
+  540  cd ece411_mp/sp24_ece411_No_Pre-Reqs/mp_ooo/
+  541  vi pkg/types.sv 
+  542  vi hdl/instruction_q.sv 
+  543  cd sim/
+  544  make run_top_tb PROG=../testcode/cp2_isa_r.s 
+  545  make run_top_tb PROG=../testcode/cp2_ls_testing.s 
+  546  make run_top_tb PROG=../testcode/coremark.elf 
+  547  history > abc
+  548  grep -r "git checkout"
+  549  cd ece411_mp/
+  550  cd sp24_ece411_No_Pre-Reqs/
+  551  history
+  552  history > abc
