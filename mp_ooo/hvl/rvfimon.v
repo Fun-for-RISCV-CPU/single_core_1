@@ -8864,18 +8864,9 @@ module riscv_formal_monitor_rv32imc_insn_rem (
   wire misa_ok = 1;
 
   // REM instruction
-  reg [32-1:0] result;
-  always @* begin
-    if (rvfi_rs2_rdata == 32'b0) begin
-      result = rvfi_rs1_rdata;
-    end else begin
-      if (rvfi_rs1_rdata == {1'b1, {32-1{1'b0}}} && rvfi_rs2_rdata == {32{1'b1}}) begin
-        result = {32{1'b0}};
-      end else begin
-        result = $signed(rvfi_rs1_rdata) % $signed(rvfi_rs2_rdata);
-      end
-    end
-  end
+  wire [32-1:0] result = rvfi_rs2_rdata == 32'b0 ? rvfi_rs1_rdata :
+                                         rvfi_rs1_rdata == {1'b1, {32-1{1'b0}}} && rvfi_rs2_rdata == {32{1'b1}} ? {32{1'b0}} :
+                                         $signed(rvfi_rs1_rdata) % $signed(rvfi_rs2_rdata);
   assign spec_valid = rvfi_valid && !insn_padding && insn_funct7 == 7'b 0000001 && insn_funct3 == 3'b 110 && insn_opcode == 7'b 0110011;
   assign spec_rs1_addr = insn_rs1;
   assign spec_rs2_addr = insn_rs2;

@@ -5,7 +5,6 @@ module wallace_multiplier
 (
     input logic clk,
     input logic rst,
-    input logic branch_mispredict,
     // Start must be reset after the done flag is set before another multiplication can execute
     input logic start,
 
@@ -61,7 +60,7 @@ module wallace_multiplier
         done = '0;
         unique case (state)
             mult_idle: begin
-             if(start) begin
+             if(start && ~rst) begin
              next_state = partial_product;
              end
              else next_state = mult_idle;
@@ -71,7 +70,7 @@ module wallace_multiplier
             if(extremely_early_check) next_state = sign_conversion;
             else next_state = wallace_add;
             end
-            wallace_add: next_state =  branch_mispredict ? mult_idle : early_finish_true || (counter == 32'h9) ? sign_conversion : wallace_add;
+            wallace_add: next_state =  rst ? mult_idle : early_finish_true || (counter == 32'h9) ? sign_conversion : wallace_add;
             sign_conversion: begin 
                  done = 1'b1;
                 unique case (mul_type)
@@ -105,7 +104,7 @@ module wallace_multiplier
     end
     
     always_ff @(posedge clk) begin
-        if(rst || done || branch_mispredict) begin
+        if(rst || done) begin
             state <= mult_idle;
             counter <= 'x;
             for(int i =0; i < TOTAL_MULTS; i++) begin
@@ -117,7 +116,7 @@ module wallace_multiplier
             state <= next_state;
             unique case(state)
                 mult_idle: begin
-                    if(start) begin
+                    if(start && ~rst) begin
                     counter <= '0;
                     for(int i = 0; i < TOTAL_MULTS; i++) begin
 			    computation_stations[i] <= '0;
@@ -167,10 +166,8 @@ module wallace_multiplier
 												(computation_stations[mult_indices[i] + 1] & computation_stations[mult_indices[i] + 2]) | 
 												(computation_stations[mult_indices[i] + 0] & computation_stations[mult_indices[i] + 2])) << 1;
 		         end 
-		         for (int i = 0; i < TOTAL_MULTS; i++) begin
-              
+		         for (int i = 0; i < TOTAL_MULTS; i++) begin 
 			         computation_stations[zero_indices[counter] + unsigned'(i)] <= '0;
-            
                if((zero_indices[counter] + unsigned'(i)) == unsigned'(TOTAL_MULTS - 1)) break;
 		         end
 		

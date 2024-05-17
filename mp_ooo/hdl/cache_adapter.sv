@@ -87,7 +87,7 @@ module i_cache_w_adapter
     input   logic   [31:0]  ufp_addr,
     input   logic   [3:0]   ufp_rmask,
     input   logic   [3:0]   ufp_wmask,
-    output  logic   [31:0]  ufp_rdata,
+    output  logic   [63:0]  ufp_rdata,
     input   logic   [31:0]  ufp_wdata,
     output  logic           ufp_resp,
 
@@ -241,7 +241,7 @@ import cache_types::*;
             // transition to read if mem is ready and read
             // go to write if ready and cache to write
             adapter_idle : begin
-                if (cache_read) begin
+                if (cache_read && !branch_mispredict) begin
                     mem_read = 1'b1;
                     if (mem_ready) begin
                         mem_addr = cache_addr;

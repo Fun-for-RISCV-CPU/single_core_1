@@ -2,9 +2,9 @@ module decode
 import rv32i_types::*;
 #(parameter rob_size = ROB_ID_SIZE)
 (
-    input   logic                       clk,
-    input   logic                       rst,
-    input   logic                       branch_mispredict,
+    //input   logic                       clk,
+    //input   logic                       rst,
+    //input   logic                       branch_mispredict,
     input   logic                       valid_inst,
     input   logic    [63:0]             queue_packet,
     input   reg_file_op                 rs1_data, rs2_data,
@@ -13,7 +13,8 @@ import rv32i_types::*;
     output  inst_decode                 decode_rs_bus,
     output  ls_q_entry                  ls_q_inst1,
     input    logic  [rob_size-1:0]      rob_id_dest,
-	input	 logic			branch_pred
+	input	 logic			            branch_pred,
+    input   logic   [15:0]              age
 );
     logic   [31:0]      rs1_d; // register data 1 
     logic   [31:0]      rs2_d; // register data 2
@@ -31,25 +32,20 @@ import rv32i_types::*;
     logic   [31:0]      u_imme;
     logic   [31:0]      j_imme;
     logic   [31:0]      imme;
-    
-    //Variables for load
-    logic   [15:0]  age_next;
-
 
     // Variables for branching
     logic               branch_inst;
     logic               jal_inst;
     logic               jump_inst;
     logic               mem_inst;
+    logic               store_inst;
     logic   [31:0]      branch_address;
 
     logic   [4:0]       rd_addr;
     logic               regf_we;
 
 	//Send to btb
-//	assign pc_at_decode = queue_packet[63:32];
-
-	
+    //	assign pc_at_decode = queue_packet[63:32];
 
     // get pc from queue packet
     logic   [31:0]      pc;
@@ -93,10 +89,11 @@ import rv32i_types::*;
     assign decode_rob_bus.branch_inst       = branch_inst;
     assign decode_rob_bus.jump_inst         = jump_inst;
     assign decode_rob_bus.mem_inst          = mem_inst;
+    assign decode_rob_bus.store_inst        = store_inst;
     assign decode_rob_bus.branch_pred      =  branch_pred;
     assign decode_rob_bus.branch_address    = branch_address;
     assign decode_rob_bus.pc                = pc;
-    assign decode_rob_bus.jal_inst               = jal_inst;
+    assign decode_rob_bus.jal_inst          = jal_inst;
     assign decode_rob_bus.rd_addr           = rd_addr;
     
     // Route to rob for rvfi
@@ -122,15 +119,6 @@ import rv32i_types::*;
     assign decode_rob_bus.rvfi_data.monitor_mem_wmask   = 4'b0000;
     assign decode_rob_bus.rvfi_data.monitor_mem_rdata    = 'x;
     assign decode_rob_bus.rvfi_data.monitor_mem_wdata    = 'x;
-    
-    always_ff @(posedge clk) begin
-        if (rst || branch_mispredict) begin
-            ls_q_inst1.age <= '0;
-        end
-        else begin
-        ls_q_inst1.age <= age_next;
-        end
-    end
 
     always_comb begin
         mem_inst = 1'b0;
@@ -140,6 +128,7 @@ import rv32i_types::*;
         branch_inst = 1'b0;
         jal_inst = 1'b0;
         jump_inst = 1'b0;
+        store_inst = 1'b0;
         //branch_pred = 1'b0;
         branch_address = 'x;
         ls_q_inst1.mem_inst = 1'b0;
@@ -156,7 +145,8 @@ import rv32i_types::*;
         ls_q_inst1.rob_id_dest = rob_id_dest;
         ls_q_inst1.issued = 'x;
         ls_q_inst1.speculation_bit = 'x;
-        age_next = ls_q_inst1.age;
+        //age_next = ls_q_inst1.age;
+        ls_q_inst1.age = age;
         ls_q_inst1.dmem_addr = 'x;
         ls_q_inst1.dmem_addr = 1'b0;
         ls_q_inst1.ready_for_mem = 'x;
@@ -164,7 +154,6 @@ import rv32i_types::*;
         ls_q_inst1.dmem_wmask = 'x;
         ls_q_inst1.dmem_wdata = 'x;
         ls_q_inst1.dmem_wdata_computed = 1'b0;
-        
 
         rd_addr = inst[11:7];
         // Get branch info and rd for rob and rvfi
@@ -223,7 +212,7 @@ import rv32i_types::*;
                 ls_q_inst1.rob_id2 = 'x;
                 ls_q_inst1.issued = 1'b0;
                 ls_q_inst1.speculation_bit = 1'b1;
-                age_next = ls_q_inst1.age + 1'b1;
+                //age_next = ls_q_inst1.age + 1'b1;
                 ls_q_inst1.ready_for_mem = 1'b0;
                 
                 
@@ -243,9 +232,10 @@ import rv32i_types::*;
                 ls_q_inst1.rob_id2 = rs2_data.rob_id;
                 ls_q_inst1.issued = 1'b0;
                 ls_q_inst1.ready_for_mem = 'x;
-                age_next = ls_q_inst1.age + 1'b1;
+                //age_next = ls_q_inst1.age + 1'b1;
                 ls_q_inst1.address_computed = 1'b0;
-                ls_q_inst1.dmem_wmask = '0;
+                ls_q_inst1.dmem_wmask = '0;        
+                store_inst = 1'b1;
 		    
             end
             op_b_imm: begin

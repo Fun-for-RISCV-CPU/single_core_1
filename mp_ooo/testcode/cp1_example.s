@@ -652,6 +652,8 @@ _start:
     addi x7, x0, 81
     addi x8, x0, 92
     addi x9, x0, 37
+    mul x10, x9, x3
+    mul x5, x4, x9
     srai 	x1,x1,16
     srli 	x2,x2,23
     slli 	x3,x3,13
@@ -725,6 +727,8 @@ _start:
     sltiu x5, x4, 0x666
     add x5, x4, x3
     sub x5, x4, x3
+    mul x10, x3, x9
+    mul x5, x4, x9
     sll x5, x4, x3
     xor x5, x4, x3
     srl x5, x4, x3

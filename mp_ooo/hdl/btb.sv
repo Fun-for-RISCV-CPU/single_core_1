@@ -7,37 +7,63 @@ import rv32i_types::*;
     input    logic  [31:0] pc_at_fetch,
     output    logic [31:0] pcout_at_fetch,
     input  rob_to_btb_bus pc_at_commit,
+    input logic valid_first_instruction,
+    output logic second_instruction_valid,
     output  logic  branch_pred_fetch
 );
-    
-      localparam short_pc_bits = 14;
+
     //btb_entry btb_table[btb_depth];
-    logic      [btb_depth -1:0][short_pc_bits - 1:0] pc_table;
+    logic      [btb_depth -1:0][31:0] pc_table;
     logic      [btb_depth -1:0][31:0] pred_address;
     logic      [btb_depth -1:0][3:0] trimod_counter;
     logic      prediction_table[btb_depth];
-    logic      [btb_depth_bits - 1:0] fetch_idx, commit_idx;
-    logic      [short_pc_bits - 1:0] short_pc_fetch;
-    
-    assign short_pc_fetch = pc_at_fetch[short_pc_bits + 1:2];
-
-    
-    assign fetch_idx = pc_at_fetch[btb_depth_bits+1:2];
-    assign commit_idx = pc_at_commit.pc[btb_depth_bits+1:2];
+    logic      [31:0] second_pc;
     
     //Logic for reading predicted addresss if branch
-    
+    assign second_pc = pc_at_fetch + 'd4;
     always_comb begin
-            if((short_pc_fetch == pc_table[fetch_idx]) && prediction_table[fetch_idx]) begin
-                    //pcout_at_fetch = {18'b011000000000000000, pred_address[fetch_idx], 2'b00};
-                    pcout_at_fetch = pred_address[fetch_idx];
+        unique case (valid_first_instruction)
+          1'b1: begin  if((pc_at_fetch == pc_table[pc_at_fetch[btb_depth_bits+1:2]]) && prediction_table[pc_at_fetch[btb_depth_bits+1:2]]) begin
+                    pcout_at_fetch = pred_address[pc_at_fetch[btb_depth_bits+1:2]];
                     branch_pred_fetch = 1'b1;
+                    second_instruction_valid = 1'b0;
             end
+            else if ((second_pc == pc_table[second_pc[btb_depth_bits+1:2]]) && prediction_table[second_pc[btb_depth_bits+1:2]])begin
+                    pcout_at_fetch = pred_address[second_pc[btb_depth_bits+1:2]];
+                    branch_pred_fetch = 1'b1;
+                    second_instruction_valid = 1'b1;
+            end 
             else begin
-                    pcout_at_fetch = pc_at_fetch + 'd4;
-                    branch_pred_fetch = 1'b0;
-            end               
+                pcout_at_fetch = pc_at_fetch + 'd8;
+                branch_pred_fetch = 1'b0;
+                second_instruction_valid = 1'b1;
+            end
+            end
+            
+            1'b0: begin
+                if ((second_pc == pc_table[second_pc[btb_depth_bits+1:2]]) && prediction_table[second_pc[btb_depth_bits+1:2]])begin
+                    pcout_at_fetch = pred_address[second_pc[btb_depth_bits+1:2]];
+                    branch_pred_fetch = 1'b1;
+                    second_instruction_valid = 1'b1;
+            end 
+            else begin
+                pcout_at_fetch = pc_at_fetch + 'd8;
+                branch_pred_fetch = 1'b0;
+                second_instruction_valid = 1'b1;
+            end
+                
+            end
+            default: pcout_at_fetch = pc_at_fetch + 'd8;
+        endcase              
     end
+    
+  //  always_comb begin
+    //        branch_pred = 1'b0;
+      //      if((pc_at_decode== btb_table[pc_at_decode[btb_depth_bits+1:2]].pc)) begin
+        //            branch_pred = prediction_table[pc_at_decode[btb_depth_bits+1:2]];
+          //  end
+                 
+    //end
     
     
     
@@ -65,41 +91,41 @@ import rv32i_types::*;
         
         //Updating BTB and counters for jal inst
         
-         if((pc_at_commit.pc[short_pc_bits + 1:2] != pc_table[commit_idx]) && (pc_at_commit.jal_inst) && pc_at_commit.ready && pc_at_commit.valid) begin
-                pc_table[commit_idx] <= pc_at_commit.pc[short_pc_bits + 1:2];
-                pred_address[commit_idx] <= pc_at_commit.pred_branch_address;
+         if((pc_at_commit.pc != pc_table[pc_at_commit.pc[btb_depth_bits+1:2]]) && (pc_at_commit.jal_inst) && pc_at_commit.ready && pc_at_commit.valid) begin
+                pc_table[pc_at_commit.pc[btb_depth_bits+1:2]] <= pc_at_commit.pc;
+                pred_address[pc_at_commit.pc[btb_depth_bits+1:2]] <= pc_at_commit.pred_branch_address; 
 
-                trimod_counter[commit_idx] <= WT0;
+                trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] <= WT0;
             end
             
-            else if((pc_at_commit.jal_inst && pc_at_commit.ready && pc_at_commit.valid) && (pc_at_commit.pc[short_pc_bits + 1:2] == pc_table[commit_idx])) begin
+            else if((pc_at_commit.jal_inst && pc_at_commit.ready && pc_at_commit.valid) && (pc_at_commit.pc == pc_table[pc_at_commit.pc[btb_depth_bits+1:2]])) begin
                     
-                        // btb_table[commit_idx].pred_address <= pc_at_commit.pred_branch_address;
+                        // btb_table[pc_at_commit.pc[btb_depth_bits+1:2]].pred_address <= pc_at_commit.pred_branch_address;
                        
-                         trimod_counter[commit_idx] <= (trimod_counter[commit_idx] == WT3)? WT3 : trimod_counter[commit_idx] +1'b1; 
+                         trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] <= (trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] == WT3)? WT3 : trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] +1'b1; 
 
             end
         
         
         
         //Updating BTB and counters for branch instruction
-            if((pc_at_commit.pc[short_pc_bits + 1:2] != pc_table[commit_idx]) && (pc_at_commit.branch_inst) && pc_at_commit.ready && pc_at_commit.valid) begin
-                pc_table[commit_idx] <= pc_at_commit.pc[short_pc_bits + 1:2];
-                pred_address[commit_idx] <= pc_at_commit.pred_branch_address;
-                trimod_counter[commit_idx] <= pc_at_commit.branch_resol ? WT0:NT0;
+            if((pc_at_commit.pc != pc_table[pc_at_commit.pc[btb_depth_bits+1:2]]) && (pc_at_commit.branch_inst) && pc_at_commit.ready && pc_at_commit.valid) begin
+                pc_table[pc_at_commit.pc[btb_depth_bits+1:2]] <= pc_at_commit.pc;
+                pred_address[pc_at_commit.pc[btb_depth_bits+1:2]] <= pc_at_commit.pred_branch_address;  
+                trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] <= pc_at_commit.branch_resol ? WT0:NT0;
             end
             
-            else if((pc_at_commit.branch_inst && pc_at_commit.ready && pc_at_commit.valid) && (pc_at_commit.pc[short_pc_bits + 1:2] == pc_table[commit_idx])) begin
+            else if((pc_at_commit.branch_inst && pc_at_commit.ready && pc_at_commit.valid) && (pc_at_commit.pc == pc_table[pc_at_commit.pc[btb_depth_bits+1:2]])) begin
                     
                     if(pc_at_commit.branch_resol) begin
-                        // btb_table[commit_idx].pred_address <= pc_at_commit.pred_branch_address;
+                        // btb_table[pc_at_commit.pc[btb_depth_bits+1:2]].pred_address <= pc_at_commit.pred_branch_address;
                       
-                         trimod_counter[commit_idx] <= (trimod_counter[commit_idx] == WT3)? WT3 : trimod_counter[commit_idx] +1'b1; 
+                         trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] <= (trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] == WT3)? WT3 : trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] +1'b1; 
                             
                     end
                     else begin
                        
-                trimod_counter[commit_idx] <= (trimod_counter[commit_idx] == NT3)? NT3 : trimod_counter[commit_idx] - 1'b1; 
+trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] <= (trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] == NT3)? NT3 : trimod_counter[pc_at_commit.pc[btb_depth_bits+1:2]] - 1'b1; 
                     end
             end
         end

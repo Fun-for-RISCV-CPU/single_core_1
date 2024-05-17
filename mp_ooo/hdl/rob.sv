@@ -1,6 +1,6 @@
 module rob
 import rv32i_types::*;
-#(parameter depth_bits = ROB_ID_SIZE, parameter decode_ports = 1, parameter load_ports = 1, parameter store_ports = 1, parameter mem_ports = 1, parameter ex_ports = EX_UNITS, parameter data_wb_ports = 1)
+#(parameter depth_bits = ROB_ID_SIZE, parameter decode_ports = SS_DISPATCH_WIDTH, parameter load_ports = 1, parameter store_ports = 1, parameter mem_ports = 1, parameter ex_ports = EX_UNITS, parameter data_wb_ports = COMMIT_FACTOR)
 (
     // Global inputs
     input logic                                         clk,
@@ -29,13 +29,14 @@ import rv32i_types::*;
 
     // Output ports
     output rob_reg_data_bus_t   [data_wb_ports-1:0]     rob_reg_data_bus,
-    output rvfi_data_t                                  rvfi_output,
+    output rvfi_data_t          [data_wb_ports-1:0]     rvfi_output,
     output  logic [depth_bits-1:0]    tail_ptr,
 	output	rob_to_btb_bus  pc_at_commit
 );
 
     localparam                          DEPTH = 2**depth_bits;
     localparam  bit [depth_bits-1:0]    FULL = '1;
+    localparam                          MAX_COMMIT = 4;
 
     rvfi_data_t [DEPTH-1:0]            rvfi_data_arr; // RVFI data that will be in parallel to ROB entry
 
@@ -44,7 +45,14 @@ import rv32i_types::*;
     logic [63:0]              order;
     logic [63:0]              order_next;
     logic [depth_bits-1:0]    rob_count, rob_count_next;
-    
+    logic [data_wb_ports-1:0] multi_commit; // Thermometer encoded number of inst to commit
+    logic [3:0]               commit_no;
+    logic [3:0]               dispatch_no;   
+
+assign order_next = order + commit_no;
+assign rob_count_next = rob_count + dispatch_no - commit_no;
+// Superscalar head_ptr update
+assign head_ptr_next = head_ptr + dispatch_no;
     //Logic for gshare branch_predictor
     
     //logic for pipelining stuff from ex data bus
@@ -59,54 +67,58 @@ import rv32i_types::*;
     
     
 	
-	
 // Updating ROB to BTB bus	
 always_comb begin
-pc_at_commit.branch_resol = rob_arr[tail_ptr].rd_data[0];
-pc_at_commit.branch_inst = rob_arr[tail_ptr].branch_inst;
-pc_at_commit.pred_branch_address = rob_arr[tail_ptr].branch_address;
-pc_at_commit.pc = rob_arr[tail_ptr].pc;
-pc_at_commit.ready = rob_arr[tail_ptr].ready;
-pc_at_commit.valid = rob_arr[tail_ptr].valid;
-pc_at_commit.jal_inst = rob_arr[tail_ptr].jal_inst;
-end
-
-
-always_comb begin
+    pc_at_commit.branch_resol = rob_arr[tail_ptr + commit_no - 4'(1)].rd_data[0];
+    pc_at_commit.branch_inst = rob_arr[tail_ptr + commit_no - 4'(1)].branch_inst;
+    pc_at_commit.pred_branch_address = rob_arr[tail_ptr + commit_no - 4'(1)].branch_address;
+    pc_at_commit.pc = rob_arr[tail_ptr + commit_no - 4'(1)].pc;
+    pc_at_commit.ready = rob_arr[tail_ptr + commit_no - 4'(1)].ready;
+    pc_at_commit.valid = rob_arr[tail_ptr + commit_no - 4'(1)].valid;
+    pc_at_commit.jal_inst = rob_arr[tail_ptr + commit_no - 4'(1)].jal_inst;
 
     // ROB full logic
-    if (rob_count >= (FULL - 2'b10)) begin
+    if (rob_count >= (FULL - 3'b100)) begin
         rob_full = 1'b1;
     end else begin
         rob_full = 1'b0;
     end
      
-    // TODO: Fix for superscalar
-    if (decode_rob_bus[0].ready) begin // && !rs_full) begin
-    //     // Head ptr next is the previous pointer plus the number of valid instructions
-    //     //for (int i = 0; i < decode_ports; i++) begin
-        head_ptr_next = head_ptr + 1'b1;
-           //end 
-    end
-    else begin
-        head_ptr_next = head_ptr;
+    // Next order including multi commit
+    dispatch_no = '0;
+    for (int i=0; i< SS_DISPATCH_WIDTH; i++)begin
+        if (decode_rob_bus[i].ready)
+            dispatch_no = dispatch_no + 1'b1;
     end
 
-    order_next = order + 1'b1; 
-
-    // Commit and Dispatch
-    if (((rob_arr[tail_ptr].ready && rob_arr[tail_ptr].valid) || (mem_rob_data_bus[0].ready && rob_arr[mem_rob_data_bus[0].rob_id].valid && mem_rob_data_bus[0].store)) && (decode_rob_bus[0].ready == 1'b1)) begin
-        rob_count_next = rob_count;
-    // Dispatch Only
-    end else if (decode_rob_bus[0].ready == 1'b1) begin
-        rob_count_next  = rob_count + 1'b1;
-    // Commit only
-    end else if ((rob_arr[tail_ptr].ready && rob_arr[tail_ptr].valid) || (mem_rob_data_bus[0].ready && rob_arr[mem_rob_data_bus[0].rob_id].valid && mem_rob_data_bus[0].store)) begin
-        rob_count_next  = rob_count - 1'b1;
-    //Neither
+    if (rob_arr[tail_ptr].ready && rob_arr[tail_ptr].valid || (mem_rob_data_bus[0].ready && rob_arr[mem_rob_data_bus[0].rob_id].valid && mem_rob_data_bus[0].store)) begin
+        // Thermometer encoded number of entries ready for parallel commit
+        //multi_commit[0] = rob_arr[tail_ptr].ready && rob_arr[tail_ptr].valid;
+        multi_commit[0] = 1'b1;
+        commit_no = 4'b0001;
+        // if (multi_commit[0]) begin
+        //     commit_no = commit_no + 1'b1;
+        // end
+        for (int i = 1; i < data_wb_ports; i++) begin
+            if(rob_arr[tail_ptr + depth_bits'(i)].valid && rob_arr[tail_ptr + depth_bits'(i)].ready && i < MAX_COMMIT) begin
+                multi_commit[i] = multi_commit[i-4'(1)] && // Previous instruction is ready
+                                ! ((rob_arr[tail_ptr + depth_bits'(i) - 4'(1)].branch_inst) || // Previous inst not Mispredicted branch
+                                rob_arr[tail_ptr + depth_bits'(i) - 4'(1)].jump_inst ||  // previous inst not Jump
+                                rob_arr[tail_ptr + depth_bits'(i) - 4'(1)].store_inst); 
+                if(multi_commit[i]) begin
+                    commit_no = commit_no + 1'b1;
+                end
+            end else begin
+                multi_commit[i] = 1'b0;
+            end
+        end
     end else begin
-        rob_count_next  = rob_count;
+        for (int i = 0; i < data_wb_ports; i++) begin
+            multi_commit[i] = 1'b0;
+        end
+        commit_no = 4'b0000;
     end
+
 end
 
 always_ff @(posedge clk) begin
@@ -145,93 +157,216 @@ always_ff @(posedge clk) begin
         branch_miss <= 1'b0;
         br_address  <= 'x;
         ///////////////
-        // COMMIT LOGIC
+        // MULTI-COMMIT LOGIC
         ///////////////
         // Check if item at tail has op_complete == 1 -> Send out data to reg file and update tail
-        if ((rob_arr[tail_ptr].ready && rob_arr[tail_ptr].valid) || (mem_rob_data_bus[0].ready && rob_arr[mem_rob_data_bus[0].rob_id].valid && mem_rob_data_bus[0].store)) begin
-            
-            // Put data on bus
-            rob_reg_data_bus[0].ready <= 1'b1;
-            rob_reg_data_bus[0].rd_data <= rob_arr[tail_ptr].rd_data;
-            rob_reg_data_bus[0].rd_addr <= rob_arr[tail_ptr].rd_addr;
-            rob_reg_data_bus[0].rob_id <= tail_ptr;
-            // Update tail
-            tail_ptr <= tail_ptr + 1'b1;
-            // Invalidate tail
-            rob_arr[tail_ptr].valid <= 1'b0;
+        if (rob_arr[tail_ptr].ready && rob_arr[tail_ptr].valid || (mem_rob_data_bus[0].ready && rob_arr[mem_rob_data_bus[0].rob_id].valid && mem_rob_data_bus[0].store && mem_rob_data_bus[0].rob_id == (tail_ptr + commit_no - 4'(1)))) begin
+            unique case(multi_commit)
+                4'b0001: begin
+                    for (int i = 0; i < 1; i++) begin
+                        // Put data on bus
+                        rob_reg_data_bus[i].ready <= 1'b1;
+                        rob_reg_data_bus[i].rd_data <= rob_arr[tail_ptr + depth_bits'(i)].rd_data;
+                        rob_reg_data_bus[i].rd_addr <= rob_arr[tail_ptr + depth_bits'(i)].rd_addr;
+                        rob_reg_data_bus[i].rob_id <= tail_ptr + depth_bits'(i);
+                        // Invalidate tail
+                        rob_arr[tail_ptr + depth_bits'(i)].valid <= 1'b0;
+                        //rob_arr[tail_ptr + depth_bits'(i)].ready <= 1'b0;
+        
+                        // Output RVFI
+                        rvfi_output[i].monitor_valid <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_valid;
+                        //rvfi_output[i].monitor_order <= order; //i; // Update order
+                        rvfi_output[i].monitor_order <= order + depth_bits'(i); // Update order
+                        rvfi_output[i].monitor_inst <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_inst;
+                        rvfi_output[i].monitor_rs1_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs1_addr;
+                        rvfi_output[i].monitor_rs2_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs2_addr;
+                        rvfi_output[i].monitor_rs1_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs1_rdata;
+                        rvfi_output[i].monitor_rs2_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs2_rdata;
+                        rvfi_output[i].monitor_regf_we <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_regf_we;
+                        rvfi_output[i].monitor_rd_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rd_addr;
+                        rvfi_output[i].monitor_rd_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rd_wdata;
+                        rvfi_output[i].monitor_pc_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_pc_rdata;
+                        rvfi_output[i].monitor_pc_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_pc_wdata;
+                        rvfi_output[i].monitor_mem_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_addr;
+                        rvfi_output[i].monitor_mem_rmask <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_rmask;
+                        rvfi_output[i].monitor_mem_wmask <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_wmask;
+                        rvfi_output[i].monitor_mem_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_rdata;
+                        rvfi_output[i].monitor_mem_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_wdata;
+                    end
 
-            // Output RVFI
-            if (rob_arr[tail_ptr].valid) begin
-                rvfi_output.monitor_valid <= rvfi_data_arr[tail_ptr].monitor_valid;
-                // Increment order only if valid commit
-                order <= order_next;
-            end
-            else begin
-                rvfi_output.monitor_valid <= 1'b0;
-            end
-            rvfi_output.monitor_order <= order; // Update order
-            rvfi_output.monitor_inst <= rvfi_data_arr[tail_ptr].monitor_inst;
-            rvfi_output.monitor_rs1_addr <= rvfi_data_arr[tail_ptr].monitor_rs1_addr;
-            rvfi_output.monitor_rs2_addr <= rvfi_data_arr[tail_ptr].monitor_rs2_addr;
-            rvfi_output.monitor_rs1_rdata <= rvfi_data_arr[tail_ptr].monitor_rs1_rdata;
-            rvfi_output.monitor_rs2_rdata <= rvfi_data_arr[tail_ptr].monitor_rs2_rdata;
-            rvfi_output.monitor_regf_we <= rvfi_data_arr[tail_ptr].monitor_regf_we;
-            rvfi_output.monitor_rd_addr <= rvfi_data_arr[tail_ptr].monitor_rd_addr;
-            rvfi_output.monitor_rd_wdata <= rvfi_data_arr[tail_ptr].monitor_rd_wdata;
-            rvfi_output.monitor_pc_rdata <= rvfi_data_arr[tail_ptr].monitor_pc_rdata;
-            rvfi_output.monitor_pc_wdata <= rvfi_data_arr[tail_ptr].monitor_pc_wdata;
-            rvfi_output.monitor_mem_addr <= rvfi_data_arr[tail_ptr].monitor_mem_addr;
-            rvfi_output.monitor_mem_rmask <= rvfi_data_arr[tail_ptr].monitor_mem_rmask;
-            rvfi_output.monitor_mem_wmask <= rvfi_data_arr[tail_ptr].monitor_mem_wmask;
-            rvfi_output.monitor_mem_rdata <= rvfi_data_arr[tail_ptr].monitor_mem_rdata;
-            rvfi_output.monitor_mem_wdata <= rvfi_data_arr[tail_ptr].monitor_mem_wdata;
+                    // Ensure other RVFI are invlaid
+                    for (int i = 1; i < 4; i++) begin
+                        rob_reg_data_bus[i].ready <= 1'b0;
+                        rvfi_output[i].monitor_valid <= '0;
+                    end
+                end
+                4'b0011: begin
+                    for (int i = 0; i < 2; i++) begin
+                        // Put data on bus
+                        rob_reg_data_bus[i].ready <= 1'b1;
+                        rob_reg_data_bus[i].rd_data <= rob_arr[tail_ptr + depth_bits'(i)].rd_data;
+                        rob_reg_data_bus[i].rd_addr <= rob_arr[tail_ptr + depth_bits'(i)].rd_addr;
+                        rob_reg_data_bus[i].rob_id <= tail_ptr + depth_bits'(i);
+                        // Invalidate tail
+                        rob_arr[tail_ptr + depth_bits'(i)].valid <= 1'b0;
+                        //rob_arr[tail_ptr + depth_bits'(i)].ready <= 1'b0;
+        
+                        // Output RVFI
+                        rvfi_output[i].monitor_valid <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_valid;
+                        //rvfi_output[i].monitor_order <= order; // + depth_bits'(i); // Update order
+                        rvfi_output[i].monitor_order <= order + depth_bits'(i); // Update order
+                        rvfi_output[i].monitor_inst <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_inst;
+                        rvfi_output[i].monitor_rs1_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs1_addr;
+                        rvfi_output[i].monitor_rs2_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs2_addr;
+                        rvfi_output[i].monitor_rs1_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs1_rdata;
+                        rvfi_output[i].monitor_rs2_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs2_rdata;
+                        rvfi_output[i].monitor_regf_we <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_regf_we;
+                        rvfi_output[i].monitor_rd_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rd_addr;
+                        rvfi_output[i].monitor_rd_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rd_wdata;
+                        rvfi_output[i].monitor_pc_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_pc_rdata;
+                        rvfi_output[i].monitor_pc_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_pc_wdata;
+                        rvfi_output[i].monitor_mem_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_addr;
+                        rvfi_output[i].monitor_mem_rmask <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_rmask;
+                        rvfi_output[i].monitor_mem_wmask <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_wmask;
+                        rvfi_output[i].monitor_mem_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_rdata;
+                        rvfi_output[i].monitor_mem_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_wdata;
+                    end
+
+                    // Ensure other RVFI are invlaid
+                    for (int i = 2; i < 4; i++) begin
+                        rob_reg_data_bus[i].ready <= 1'b0;
+                        rvfi_output[i].monitor_valid <= '0;
+                    end
+                end
+                4'b0111: begin
+                    for (int i = 0; i < 3; i++) begin
+                        // Put data on bus
+                        rob_reg_data_bus[i].ready <= 1'b1;
+                        rob_reg_data_bus[i].rd_data <= rob_arr[tail_ptr + depth_bits'(i)].rd_data;
+                        rob_reg_data_bus[i].rd_addr <= rob_arr[tail_ptr + depth_bits'(i)].rd_addr;
+                        rob_reg_data_bus[i].rob_id <= tail_ptr + depth_bits'(i);
+                        // Invalidate tail
+                        rob_arr[tail_ptr + depth_bits'(i)].valid <= 1'b0;
+                        //rob_arr[tail_ptr + depth_bits'(i)].ready <= 1'b0;
+        
+                        // Output RVFI
+                        rvfi_output[i].monitor_valid <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_valid;
+                        //rvfi_output[i].monitor_order <= order; // + depth_bits'(i); // Update order
+                        rvfi_output[i].monitor_order <= order + depth_bits'(i); // Update order
+                        rvfi_output[i].monitor_inst <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_inst;
+                        rvfi_output[i].monitor_rs1_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs1_addr;
+                        rvfi_output[i].monitor_rs2_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs2_addr;
+                        rvfi_output[i].monitor_rs1_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs1_rdata;
+                        rvfi_output[i].monitor_rs2_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs2_rdata;
+                        rvfi_output[i].monitor_regf_we <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_regf_we;
+                        rvfi_output[i].monitor_rd_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rd_addr;
+                        rvfi_output[i].monitor_rd_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rd_wdata;
+                        rvfi_output[i].monitor_pc_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_pc_rdata;
+                        rvfi_output[i].monitor_pc_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_pc_wdata;
+                        rvfi_output[i].monitor_mem_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_addr;
+                        rvfi_output[i].monitor_mem_rmask <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_rmask;
+                        rvfi_output[i].monitor_mem_wmask <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_wmask;
+                        rvfi_output[i].monitor_mem_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_rdata;
+                        rvfi_output[i].monitor_mem_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_wdata;
+
+                        // Ensure other RVFI are invlaid
+                        for (int i = 3; i < 4; i++) begin
+                            rob_reg_data_bus[i].ready <= 1'b0;
+                            rvfi_output[i].monitor_valid <= '0;
+                        end
+                    end
+                end
+                4'b1111: begin
+                    for (int i = 0; i < 4; i++) begin
+                        // Put data on bus
+                        rob_reg_data_bus[i].ready <= 1'b1;
+                        rob_reg_data_bus[i].rd_data <= rob_arr[tail_ptr + depth_bits'(i)].rd_data;
+                        rob_reg_data_bus[i].rd_addr <= rob_arr[tail_ptr + depth_bits'(i)].rd_addr;
+                        rob_reg_data_bus[i].rob_id <= tail_ptr + depth_bits'(i);
+                        // Invalidate tail
+                        rob_arr[tail_ptr + depth_bits'(i)].valid <= 1'b0;
+                        //rob_arr[tail_ptr + depth_bits'(i)].ready <= 1'b0;
+        
+                        // Output RVFI
+                        rvfi_output[i].monitor_valid <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_valid;
+                        //rvfi_output[i].monitor_order <= order + depth_bits'(i); // Update order
+                        rvfi_output[i].monitor_order <= order + depth_bits'(i); // Update order
+                        rvfi_output[i].monitor_inst <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_inst;
+                        rvfi_output[i].monitor_rs1_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs1_addr;
+                        rvfi_output[i].monitor_rs2_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs2_addr;
+                        rvfi_output[i].monitor_rs1_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs1_rdata;
+                        rvfi_output[i].monitor_rs2_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rs2_rdata;
+                        rvfi_output[i].monitor_regf_we <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_regf_we;
+                        rvfi_output[i].monitor_rd_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rd_addr;
+                        rvfi_output[i].monitor_rd_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_rd_wdata;
+                        rvfi_output[i].monitor_pc_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_pc_rdata;
+                        rvfi_output[i].monitor_pc_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_pc_wdata;
+                        rvfi_output[i].monitor_mem_addr <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_addr;
+                        rvfi_output[i].monitor_mem_rmask <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_rmask;
+                        rvfi_output[i].monitor_mem_wmask <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_wmask;
+                        rvfi_output[i].monitor_mem_rdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_rdata;
+                        rvfi_output[i].monitor_mem_wdata <= rvfi_data_arr[tail_ptr + depth_bits'(i)].monitor_mem_wdata;
+        
+                    end
+                end
+                default: begin
+                end
+            endcase
 
             // Branch instruction flush if prediction is incorrect
+            // If there is a branch/jump being committed, it is guaranteed to be the last index 
+            // in multi-commit due to multi-commit counting logic
             // Case 1: Branch Misprediction
             // Case 2: Jump Instruction
 			//Prediction was correct
-            if ((rob_arr[tail_ptr].branch_inst &&
-                (rob_arr[tail_ptr].branch_pred == rob_arr[tail_ptr].rd_data[0]))) begin
+            if ((rob_arr[tail_ptr + commit_no - 4'(1)].branch_inst &&
+                (rob_arr[tail_ptr + commit_no - 4'(1)].branch_pred == rob_arr[tail_ptr + commit_no - 4'(1)].rd_data[0]))) begin
                 branch_miss <= 1'b0;
-                br_address  <= rob_arr[tail_ptr].rd_data[0] ? (rob_arr[tail_ptr].branch_address) : (rob_arr[tail_ptr].pc + 'd4);
+                br_address  <= rob_arr[tail_ptr + commit_no - 4'(1)].rd_data[0] ? (rob_arr[tail_ptr + commit_no - 4'(1)].branch_address) : (rob_arr[tail_ptr + commit_no - 4'(1)].pc + 'd4);
             end
-			else if ((rob_arr[tail_ptr].branch_inst &&
-                (rob_arr[tail_ptr].branch_pred != rob_arr[tail_ptr].rd_data[0]))) begin
+			else if ((rob_arr[tail_ptr + commit_no - 4'(1)].branch_inst &&
+                (rob_arr[tail_ptr + commit_no - 4'(1)].branch_pred != rob_arr[tail_ptr + commit_no - 4'(1)].rd_data[0]))) begin
 				branch_miss <= 1'b1;
-				br_address <= rob_arr[tail_ptr].rd_data[0]? rob_arr[tail_ptr].branch_address : (rob_arr[tail_ptr].pc + 4);
+				br_address <= rob_arr[tail_ptr + commit_no - 4'(1)].rd_data[0]? rob_arr[tail_ptr + commit_no - 4'(1)].branch_address : (rob_arr[tail_ptr + commit_no - 4'(1)].pc + 4);
 				end
         
-        else if(rob_arr[tail_ptr].jal_inst && rob_arr[tail_ptr].branch_pred) begin
-            branch_miss <= 1'b0;
-	          br_address  <= rob_arr[tail_ptr].branch_address;	
-        end
-        
-         else if(rob_arr[tail_ptr].jal_inst && !rob_arr[tail_ptr].branch_pred) begin
-            branch_miss <= 1'b1;
-	          br_address  <= rob_arr[tail_ptr].branch_address;	
-        end
-        
-				else if(rob_arr[tail_ptr].jump_inst && !rob_arr[tail_ptr].jal_inst) begin
-					 branch_miss <= 1'b1;
-					 br_address  <= rob_arr[tail_ptr].branch_address;	
-				end
+            else if(rob_arr[tail_ptr + commit_no - 4'(1)].jal_inst && rob_arr[tail_ptr + commit_no - 4'(1)].branch_pred) begin
+                branch_miss <= 1'b0;
+                br_address  <= rob_arr[tail_ptr + commit_no - 4'(1)].branch_address;	
+            end
+            
+            else if(rob_arr[tail_ptr + commit_no - 4'(1)].jal_inst && !rob_arr[tail_ptr + commit_no - 4'(1)].branch_pred) begin
+                branch_miss <= 1'b1;
+                br_address  <= rob_arr[tail_ptr + commit_no - 4'(1)].branch_address;	
+            end
+            
+            else if(rob_arr[tail_ptr + commit_no - 4'(1)].jump_inst && !rob_arr[tail_ptr + commit_no - 4'(1)].jal_inst) begin
+                    branch_miss <= 1'b1;
+                    br_address  <= rob_arr[tail_ptr + commit_no - 4'(1)].branch_address;	
+            end
             else if (load_mispredict) begin
                 branch_miss <= 1'b1;
-                br_address  <= rob_arr[tail_ptr].pc + 'd4;
+                br_address  <= rob_arr[tail_ptr + commit_no - 4'(1)].pc + 'd4;
             end
             else begin
                 branch_miss <= 1'b0;
             end
 
+            // Update tail and order
+            tail_ptr <= tail_ptr + commit_no;
+            order    <= order_next;
+            
         end else begin
-            // Set data on bus to invalid and 'x
-            rob_reg_data_bus[0].ready <= 1'b0;
-            rob_reg_data_bus[0].rd_data <= 'x;
-            rob_reg_data_bus[0].rd_addr <= 'x;
+            for (int i = 0; i < data_wb_ports; i++) begin
+                // Set data on bus to invalid and 'x
+                rob_reg_data_bus[i].ready <= 1'b0;
+                rob_reg_data_bus[i].rd_data <= 'x;
+                rob_reg_data_bus[i].rd_addr <= 'x;
+                // Invalidate RVFI output if no new commit
+                rvfi_output[i].monitor_valid <= 1'b0; 
+            end
             // Update tail
             tail_ptr <= tail_ptr;
-            // Invalidate RVFI output if no new commit
-            rvfi_output.monitor_valid <= 1'b0;
         end
 
         //////////////////////////
@@ -239,29 +374,30 @@ always_ff @(posedge clk) begin
         //////////////////////////
 
         // Add new items from decode bus(es) into rob entries
-        //for (logic [4:0] i = 5'b0; i < decode_ports; i++) begin
-            if (decode_rob_bus[0].ready == 1'b1) begin
-                rob_arr[head_ptr + 0].ready          <= 1'b0;
-                rob_arr[head_ptr + 0].valid         <= 1'b1;
-                rob_arr[head_ptr + 0].branch_inst   <= decode_rob_bus[0].branch_inst;
-                rob_arr[head_ptr + 0].jump_inst     <= decode_rob_bus[0].jump_inst;
-                rob_arr[head_ptr + 0].jal_inst     <= decode_rob_bus[0].jal_inst;
-                rob_arr[head_ptr + 0].mem_inst      <= decode_rob_bus[0].mem_inst;
-                rob_arr[head_ptr + 0].branch_pred  <= decode_rob_bus[0].branch_pred;
-                rob_arr[head_ptr + 0].branch_address <= decode_rob_bus[0].branch_address;
-                rob_arr[head_ptr + 0].pc            <= decode_rob_bus[0].pc;
-                rob_arr[head_ptr + 0].rd_addr       <= decode_rob_bus[0].rd_addr;
-                rob_arr[head_ptr + 0].rd_data       <= 'x;
+        for (int i = 0; i < decode_ports; i++) begin
+            if (decode_rob_bus[i].ready == 1'b1) begin
+                rob_arr[head_ptr + depth_bits'(i)].ready          <= 1'b0;
+                rob_arr[head_ptr + depth_bits'(i)].valid         <= 1'b1;
+                rob_arr[head_ptr + depth_bits'(i)].branch_inst   <= decode_rob_bus[i].branch_inst;
+                rob_arr[head_ptr + depth_bits'(i)].jump_inst     <= decode_rob_bus[i].jump_inst;
+                rob_arr[head_ptr + depth_bits'(i)].jal_inst     <= decode_rob_bus[i].jal_inst;
+                rob_arr[head_ptr + depth_bits'(i)].mem_inst      <= decode_rob_bus[i].mem_inst;
+                rob_arr[head_ptr + depth_bits'(i)].store_inst      <= decode_rob_bus[i].store_inst;
+                rob_arr[head_ptr + depth_bits'(i)].branch_pred  <= decode_rob_bus[i].branch_pred;
+                rob_arr[head_ptr + depth_bits'(i)].branch_address <= decode_rob_bus[i].branch_address;
+                rob_arr[head_ptr + depth_bits'(i)].pc            <= decode_rob_bus[i].pc;
+                rob_arr[head_ptr + depth_bits'(i)].rd_addr       <= decode_rob_bus[i].rd_addr;
+                rob_arr[head_ptr + depth_bits'(i)].rd_data       <= 'x;
                 
                 // Validate entry
-                rob_arr[head_ptr + 0].valid <= 1'b1;
+                rob_arr[head_ptr + depth_bits'(i)].valid <= 1'b1;
                 
-                rvfi_data_arr[head_ptr + 0] <= decode_rob_bus[0].rvfi_data;
+                rvfi_data_arr[head_ptr + depth_bits'(i)] <= decode_rob_bus[i].rvfi_data;
 
                 // Increment head pointer
                 head_ptr <= head_ptr_next;
             end
-        //end
+        end
 
         //////////////////////////
         // EX_UNIT -> ROB BUS LOGIC

@@ -5,7 +5,6 @@ import rv32i_types::*;
 	input logic inst_clk,
 	input logic rst,
 	input logic inst_start,
-  input logic branch_mispredict,
 	input logic [31:0] inst_a,
 	input logic [31:0] inst_b,
 	output logic [31:0] quotient_inst,
@@ -77,12 +76,6 @@ end
             end   
             end
          shift_sub: begin
-            if(branch_mispredict) begin
-             
-                counter <= '0;
-                state <= div_idle;
-            end
-            else begin
             if (inst_b <= R) begin
 							Q[31:0] <= {Q[30:0], 1'b1};
 							if (counter != '0)
@@ -98,7 +91,6 @@ end
 					end
 
 					counter <= counter - 1'b1;
-          end
          end
          
          done: begin

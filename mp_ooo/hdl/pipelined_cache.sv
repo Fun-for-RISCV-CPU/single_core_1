@@ -8,7 +8,7 @@ import cache_types::*;
     input   logic   [31:0]  ufp_addr,
     input   logic   [3:0]   ufp_rmask,
     input   logic   [3:0]   ufp_wmask,
-    output  logic   [31:0]  ufp_rdata,
+    output  logic   [32*SS_DISPATCH_WIDTH-1:0]  ufp_rdata,
     input   logic   [31:0]  ufp_wdata,
     output  logic           ufp_resp,
 
@@ -39,7 +39,8 @@ import cache_types::*;
     logic [3:0]              valid_out;
 
     // logic [3:0][255:0]       data_array_out_shift;
-    logic   [31:0]          segmented_data;
+    // logic   [31:0]          segmented_data;
+    logic   [63:0]          segmented_data;
 
     // sram inputs
     //logic [23:0]        tag_array_in;
@@ -183,14 +184,23 @@ import cache_types::*;
 
                         if (cmpr_out[i] && valid_out[i]) begin
                             unique case (cache_reg.offset)
-                            'd0: segmented_data = data_array_out[i][31:0];
-                            'd4: segmented_data = data_array_out[i][63:32];
-                            'd8: segmented_data = data_array_out[i][95:64];
-                            'd12: segmented_data = data_array_out[i][127:96];
-                            'd16: segmented_data = data_array_out[i][159:128];
-                            'd20: segmented_data = data_array_out[i][191:160];
-                            'd24: segmented_data = data_array_out[i][223:192];
-                            'd28: segmented_data = data_array_out[i][255:224];
+                            'd0: segmented_data = data_array_out[i][63:0];
+                            // 'd4: segmented_data = data_array_out[i][63:32];
+                            'd8: segmented_data = data_array_out[i][127:64];
+                            // 'd12: segmented_data = data_array_out[i][127:96];
+                            'd16: segmented_data = data_array_out[i][191:128];
+                            // 'd20: segmented_data = data_array_out[i][191:160];
+                            'd24: segmented_data = data_array_out[i][255:192];
+                            // 'd28: segmented_data = data_array_out[i][255:224];
+                            
+                            // 'd0: segmented_data = data_array_out[i][31:0];
+                            // 'd4: segmented_data = data_array_out[i][63:32];
+                            // 'd8: segmented_data = data_array_out[i][95:64];
+                            // 'd12: segmented_data = data_array_out[i][127:96];
+                            // 'd16: segmented_data = data_array_out[i][159:128];
+                            // 'd20: segmented_data = data_array_out[i][191:160];
+                            // 'd24: segmented_data = data_array_out[i][223:192];
+                            // 'd28: segmented_data = data_array_out[i][255:224];
                             default: segmented_data = 'x;
                             endcase
                             ufp_rdata = segmented_data;

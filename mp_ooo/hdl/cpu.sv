@@ -22,36 +22,38 @@ import rv32i_types::*;
     output logic               bmem_read,
     output logic               bmem_write,
     output logic   [63:0]      bmem_wdata,
-    input logic               bmem_ready,
+    input logic                bmem_ready,
 
-    input logic   [31:0]      bmem_raddr,
-    input logic   [63:0]      bmem_rdata,
-    input logic               bmem_rvalid
+    input logic   [31:0]       bmem_raddr,
+    input logic   [63:0]       bmem_rdata,
+    input logic                bmem_rvalid
 );
-    logic           branch_mispredict, in_flight_mem;
-    logic  [1:0] mem_state;
-    ls_mem_bus_t    mem_input;
-    logic           valid_inst, load_mispredict;
+    logic                                       branch_mispredict, in_flight_mem;
+    logic  [1:0]                                mem_state;
+    ls_mem_bus_t                                mem_input;
+    logic  [SS_DISPATCH_WIDTH - 1:0]            valid_inst;
+    logic           load_mispredict;
     //full and empty for ls_q to be sent to decode
     logic           reservation_full, full_load, empty_load, full_store, empty_store;
-    logic   [31:0]  branch_target; 
-    logic   [EX_UNITS-1:0][31:0]  rvfi_rs1_v, rvfi_rs2_v;
-    logic   [63:0]  inst_out;
-    logic   [4:0]   rs1_addr, rs2_addr;
+    logic   [1:0][15:0]                         age;
+    logic   [31:0]                              branch_target; 
+    logic   [EX_UNITS-1:0][31:0]                rvfi_rs1_v, rvfi_rs2_v;
+    iqueue_entry_t   [SS_DISPATCH_WIDTH-1:0]           inst_out;
+    logic   [SS_DISPATCH_WIDTH - 1:0][4:0]      rs1_addr, rs2_addr;
     // parametrize it later based on rob_depth
-    logic   [ROB_ID_SIZE-1:0]  rob_tail_ptr, rob_head_ptr;
-    logic                   rob_full;
-    reg_file_op             rs1_data, rs2_data;
+    logic           [ROB_ID_SIZE-1:0]           rob_tail_ptr, rob_head_ptr;
+    logic                                       rob_full;
+    reg_file_op  [SS_DISPATCH_WIDTH - 1:0]      rs1_data, rs2_data;
     // Size of these buses need to be updated for superscalarity
-    decode_rob_bus_t  [0:0]  decode_rob_bus;
-    inst_decode       decode_rs_bus;
-    rob_reg_data_bus_t   [0:0]  data_wb_bus;
-    rob_entry_t          [2**ROB_ID_SIZE-1:0] rob_data_bus;
-    ex_data_bus_t     alu_data_bus[EX_UNITS];
-    rs_d              rs_data[EX_UNITS];
-    rvfi_data_t                                  rvfi_output;
-    mem_rob_data_bus_t  mem_rob_data_o;
-    ls_rob_data_bus_t   load_rob_data_bus, store_rob_data_bus;
+    decode_rob_bus_t  [SS_DISPATCH_WIDTH - 1:0]  decode_rob_bus;
+    inst_decode       [SS_DISPATCH_WIDTH - 1:0]  decode_rs_bus;
+    rob_reg_data_bus_t   [COMMIT_FACTOR-1:0]     data_wb_bus;
+    rob_entry_t          [2**ROB_ID_SIZE-1:0]    rob_data_bus;
+    ex_data_bus_t                                alu_data_bus[EX_UNITS];
+    rs_d                                         rs_data[EX_UNITS];
+    rvfi_data_t         [COMMIT_FACTOR-1:0]      rvfi_output;
+    mem_rob_data_bus_t                           mem_rob_data_o;
+    ls_rob_data_bus_t                            load_rob_data_bus, store_rob_data_bus;
     
     //BTB signals
     logic [31:0] pc_at_fetch, pcout_at_fetch;
@@ -61,14 +63,13 @@ import rv32i_types::*;
     
     assign load_mispredict = 1'b0;
     
-    
     //Need this to come from decode
-    ls_q_entry        ls_q_o, ls_q_inst1;
+    ls_q_entry      [SS_DISPATCH_WIDTH - 1:0]   ls_q_inst1;
     
     // mem variables 
     logic   [31:0]  imem_addr;
     logic   [3:0]   imem_rmask;
-    logic   [31:0]  imem_rdata;
+    logic   [SS_DISPATCH_WIDTH*32-1:0]  imem_rdata;
     logic           imem_resp;
 
     logic   [31:0]  dmem_addr;
@@ -103,6 +104,17 @@ import rv32i_types::*;
     // assign i_cache_ready = bmem_ready;
 
     // assign d_cache_ready = 1'b0;
+    // From fetch to btb
+    logic    valid_first_inst;
+    logic    second_instruction_valid;
+
+
+    logic [SS_DISPATCH_WIDTH - 1:0][ROB_ID_SIZE-1:0] next_rob_ptrs;
+    always_comb begin
+        for (int i=0; i<SS_DISPATCH_WIDTH; i++) begin
+            next_rob_ptrs[i] = rob_head_ptr + ROB_ID_SIZE'(i);
+        end
+    end
 
     cache_arbiter cache_arbiter(
         .clk(clk),
@@ -188,7 +200,9 @@ import rv32i_types::*;
     .pc_at_fetch(pc_at_fetch),
     .pcout_at_fetch(pcout_at_fetch),
     .pc_at_commit(pc_at_commit),
-    .branch_pred_fetch(branch_pred_fetch)
+    .branch_pred_fetch(branch_pred_fetch),
+    .valid_first_instruction(valid_first_inst),
+    .second_instruction_valid(second_instruction_valid)
     );
 
     fetch_unit fetch_unit_inst(
@@ -202,30 +216,36 @@ import rv32i_types::*;
         .imem_addr(imem_addr),
         .imem_rmask(imem_rmask),
         .inst_out(inst_out),
-        .valid_inst(valid_inst),
+        //.valid_inst(valid_inst),
         .rob_full(rob_full || full_load || full_store),
         .pc_at_fetch(pc_at_fetch),
         .pcout_at_fetch(pcout_at_fetch),
         .branch_pred_fetch(branch_pred_fetch),
-        .branch_pred(branch_pred)
+        .valid_first_inst(valid_first_inst),
+        .second_instruction_valid(second_instruction_valid),
+        .age(age)
+        //.branch_pred(branch_pred)
     );
     
-    decode decode(
-    .clk(clk),
-    .rst(rst),
-    .branch_mispredict(branch_mispredict),
-    .valid_inst(valid_inst),
-    .queue_packet(inst_out),
-    .rs1_data(rs1_data),
-    .rs2_data(rs2_data),
-    .rs1_addr(rs1_addr),
-    .rs2_addr(rs2_addr),
-    .decode_rob_bus(decode_rob_bus),
-    .decode_rs_bus(decode_rs_bus),
-    .ls_q_inst1(ls_q_inst1),
-    .rob_id_dest(rob_head_ptr),
-    .branch_pred(branch_pred)
-    );
+    generate for(genvar i = 0; i < SS_DISPATCH_WIDTH; i++) begin: arrays
+        decode decode(
+            //.clk(clk),
+            //.rst(rst),
+            //.branch_mispredict(branch_mispredict),
+            .valid_inst(inst_out[i].valid),
+            .queue_packet({inst_out[i].pc, inst_out[i].inst}),
+            .rs1_data(rs1_data[i]),
+            .rs2_data(rs2_data[i]),
+            .rs1_addr(rs1_addr[i]),
+            .rs2_addr(rs2_addr[i]),
+            .decode_rob_bus(decode_rob_bus[i]),
+            .decode_rs_bus(decode_rs_bus[i]),
+            .ls_q_inst1(ls_q_inst1[i]),
+            .rob_id_dest(next_rob_ptrs[i]),
+            .branch_pred(inst_out[i].branch_pred),
+            .age(age[i])
+        );
+    end endgenerate
     
     regfile regfile(
         .clk(clk),
@@ -245,7 +265,7 @@ import rv32i_types::*;
         .rst(rst),
         .branch_mispredict(branch_mispredict),
         .inst1(decode_rs_bus),
-        .rob_id_dest(rob_head_ptr),
+        .rob_id_dest(next_rob_ptrs),
         .full(reservation_full),
         .rvfi_rs1_v(rvfi_rs1_v),
         .rvfi_rs2_v(rvfi_rs2_v),

@@ -74,11 +74,6 @@ suppress_message OPT-153
 suppress_message PWR-429
 # The unannotated net '%s' is driven by a black box output.
 suppress_message PWR-416
-<<<<<<< HEAD
-# %s SV Assertions are ignored for synthesis since %s is not set to true.
-suppress_message ELAB-33
-=======
->>>>>>> fb96ac0 (mp_ooo patch 5)
 
 # %s DEFAULT branch of CASE statement cannot be reached.
 suppress_message ELAB-311

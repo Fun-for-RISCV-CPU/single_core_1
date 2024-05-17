@@ -71,7 +71,6 @@ import rv32i_types::*;
     input logic clk,
     input logic rst,
     input rs_d rs_data,
-    input branch_mispredict,
     output  mult_inst_bit,
     output  done_inst,
     output start_inst,
@@ -98,7 +97,6 @@ import rv32i_types::*;
     logic   [1:0]   mul_type;
     logic   [31:0]  mul_in_1;
     logic   [31:0]  mul_in_2;
-    
     logic valid;
     // Signals for divider
     logic div_inst, start_div, div_complete, state_div, state_div_next,complete, divide_by_zero, divider_bypass_check;
@@ -172,7 +170,6 @@ import rv32i_types::*;
         .rst(rst),
         .start(start),
         .mul_type(mul_type),
-        .branch_mispredict(branch_mispredict),
         .a(mul_in_1),
         .b(mul_in_2),
         .p(mul_out),
@@ -186,7 +183,6 @@ import rv32i_types::*;
     .inst_a(div_inp_a),
     .inst_b(div_inp_b),
     .complete_inst(complete),
-    .branch_mispredict(branch_mispredict),
     .divide_by_0(divide_by_zero),
     .quotient_inst(quotient),
     .remainder_inst(remainder)
@@ -429,9 +425,8 @@ import rv32i_types::*;
     generate for (genvar i = 0; i < n_exec; i++) begin : arrays
         execution_unit exec_array (
             .clk(clk),
-            .rst(rst),
+            .rst(rst||branch_mispredict),
             .mult_inst_bit(mul_inst[i]),
-            .branch_mispredict(branch_mispredict),
             .done_inst(done_inst[i]),
             .start_inst(start_inst[i]),
             .rs_data(rs_data[i]),

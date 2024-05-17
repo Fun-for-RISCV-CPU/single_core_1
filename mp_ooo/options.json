@@ -1,5 +1,5 @@
 {
-    "clock"       : 1620,
+    "clock"       : 2500,
     "m_ext"       : true,
     "c_ext"       : false,
     "f_ext"       : false,
@@ -10,6 +10,6 @@
         "ungroup"       : true,
         "gate_clock"    : true,
         "retime"        : true,
-        "min_power"     : false
+        "min_power"     : true
     }
 }

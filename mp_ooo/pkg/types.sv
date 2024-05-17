@@ -3,6 +3,7 @@
 //    Note you may not need to use your stage structs      //
 /////////////////////////////////////////////////////////////
 package cache_types; 
+localparam  SS_DISPATCH_WIDTH = 2;
 localparam OFFSET = 5;
 localparam N_SET = 4;
 localparam TAG_SIZE = 32-N_SET-OFFSET;
@@ -46,6 +47,8 @@ package rv32i_types;
 
     localparam  ROB_ID_SIZE = 4;
     localparam  EX_UNITS = 3;
+    localparam  COMMIT_FACTOR = 4;
+    localparam  SS_DISPATCH_WIDTH = 2; 
 
     typedef enum logic [6:0] {
         op_b_lui   = 7'b0110111, // U load upper immediate 
@@ -75,10 +78,17 @@ package rv32i_types;
     } branch_pred_struct;
 
     typedef struct packed{
-        logic           valid;
-        logic           branch_pred;
-        logic   [31:0]  pc;
+      logic   [SS_DISPATCH_WIDTH-1:0]       valid;
+      logic   [SS_DISPATCH_WIDTH-1:0]       branch_pred;
+      logic   [31:0]                        pc;
     } fetch_reg_1_t;
+
+    typedef struct packed{
+      logic   valid;
+      logic   branch_pred;
+      logic   [31:0]  inst;
+      logic   [31:0]  pc;
+    } iqueue_entry_t;
 
     // Struct for passing/updating RVFI info
     typedef struct packed{
@@ -108,7 +118,8 @@ package rv32i_types;
         logic                   branch_inst;
         logic                   jump_inst;
         logic                   jal_inst;
-        logic    mem_inst;
+        logic                   mem_inst;
+        logic                   store_inst;
         logic                   branch_pred;
         logic   [31:0]          branch_address;
         //logic   [ROB_ID_SIZE-1:0] rob_id;
@@ -128,7 +139,8 @@ package rv32i_types;
         logic                  branch_inst;
         logic                  jump_inst;
         logic                  jal_inst;
-        logic    mem_inst;
+        logic                  mem_inst;
+        logic                  store_inst;
         logic                  branch_pred;
         logic   [31:0]         branch_address;
         logic   [31:0]         pc;

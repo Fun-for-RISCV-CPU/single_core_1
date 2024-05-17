@@ -1,11 +1,11 @@
 module load_store
 import rv32i_types::*;
-#(parameter l_q_depth = 4, s_q_depth = 4,  ld_res_station = 1, str_res_station = 1, rob_size = ROB_ID_SIZE)
+#(parameter l_q_depth = 8, s_q_depth = 8,  ld_res_station = 1, str_res_station = 1, rob_size = ROB_ID_SIZE, parameter decode_ports = SS_DISPATCH_WIDTH)
 (
     input logic clk,
     input logic rst,
     input   logic               branch_mispredict,
-    input ls_q_entry ls_q_inst1,
+    input ls_q_entry [SS_DISPATCH_WIDTH - 1:0] ls_q_inst1,
     //input logic[rob_size-1:0] rob_id_dest,
     input rob_entry_t [2**rob_size-1:0] rob_data_bus,
     input [rob_size - 1:0] rob_tail_ptr,
@@ -17,11 +17,11 @@ import rv32i_types::*;
     output  logic   [3:0]   dmem_rmask,
     output  logic   [3:0]   dmem_wmask,
     output  logic   [31:0]  dmem_wdata,
-    input logic[1:0] mem_state
+    input logic     [1:0]   mem_state
 );
 
 logic [31:0] dmem_store_addr, dmem_load_addr, dmem_store_wdata;
-logic   [1:0] action_load, action_store;
+//logic   [1:0] action_load, action_store; // Depricated
 logic [3:0] dmem_store_wmask;
 logic [s_q_depth - 1:0][31:0]       address_array;
 logic  load_sent_to_mem, store_sent_to_mem;
@@ -37,9 +37,17 @@ ls_q_entry store_queue[s_q_depth];
 load_res_station_entry load_res_station[ld_res_station];
 store_res_station_entry store_res_station[str_res_station];
 int front_load, rear_load, front_store, rear_store;
-assign full_load = (front_load == ((rear_load+2) % l_q_depth) || front_load == ((rear_load+1) % l_q_depth));
+
+int                              load_enqueue_no;
+logic  [SS_DISPATCH_WIDTH-1:0]   load_push;
+logic                            load_pop;
+int                              store_enqueue_no;
+logic  [SS_DISPATCH_WIDTH-1:0]   store_push;
+logic                            store_pop;
+
+assign full_load = (front_load == ((rear_load+4) % l_q_depth) || front_load == ((rear_load+3) % l_q_depth) || front_load == ((rear_load+2) % l_q_depth) || front_load == ((rear_load+1) % l_q_depth));
 assign empty_load = (front_load == -1);
-assign full_store = (front_store == ((rear_store+2) % s_q_depth) || front_store == ((rear_store+1) % s_q_depth));
+assign full_store = (front_store == ((rear_store+4) % s_q_depth) || front_store == ((rear_store+3) % s_q_depth) || front_store == ((rear_store+2) % s_q_depth) || front_store == ((rear_store+1) % s_q_depth));
 assign empty_store = (front_store == -1);
 
 generate for (genvar i = 0; i < s_q_depth; i++) begin
@@ -436,55 +444,73 @@ always_ff @(posedge clk) begin
 end
 // Enqueue and dequue logic for load store queue   
 always_comb begin
-    //verify logic
-    action_load = none;
-    action_store = none;
-    if(empty_load && ls_q_inst1.valid && ls_q_inst1.mem_inst && ls_q_inst1.l_s || 
-    ls_q_inst1.valid && ls_q_inst1.mem_inst && load_res_station[0].valid && ls_q_inst1.l_s  || 
-    ls_q_inst1.valid && ls_q_inst1.mem_inst && ((~load_queue[front_load].r1 || ~load_queue[front_load].r2) && ls_q_inst1.l_s)) begin
+    // Enqueue No.
+    load_enqueue_no = 0;
+    store_enqueue_no = 0;
+    for (int i=0; i < SS_DISPATCH_WIDTH; i++)begin
+        // Calculate number of instructions to be loaded
+        if (ls_q_inst1[i].mem_inst && ls_q_inst1[i].l_s) load_enqueue_no = load_enqueue_no + ls_q_inst1[i].valid;
+        if (ls_q_inst1[i].mem_inst && !ls_q_inst1[i].l_s) store_enqueue_no = store_enqueue_no + ls_q_inst1[i].valid;
+
+        // Determine bit wise which is which (for looping later in sequential logic)
+        load_push[i] =  ls_q_inst1[i].valid && ls_q_inst1[i].mem_inst && ls_q_inst1[i].l_s;
+        store_push[i] = ls_q_inst1[i].valid && ls_q_inst1[i].mem_inst && !ls_q_inst1[i].l_s;
+    end
+
+    // Independent popping logic
+    load_pop = ~empty_load && ~load_res_station[0].valid && load_queue[front_load].r1 && load_queue[front_load].r2;
+    store_pop = ~empty_store && ~store_res_station[0].valid && store_queue[front_store].r1 && store_queue[front_store].r2;
     
-            action_load = push;
-        end
-        else if((~empty_load && (~ls_q_inst1.mem_inst || ~ls_q_inst1.l_s) && ~load_res_station[0].valid && load_queue[front_load].r1 && load_queue[front_load].r2)) begin
-                
-                action_load = pop;
-        end
-        else if(~empty_load && ls_q_inst1.valid && ls_q_inst1.mem_inst && ls_q_inst1.l_s && ~load_res_station[0].valid && load_queue[front_load].r1 && load_queue[front_load].r2) begin
-                action_load = push_pop;
-        end
-
-
-if(empty_store && ls_q_inst1.valid && ls_q_inst1.mem_inst && ~ls_q_inst1.l_s || 
-    ls_q_inst1.valid && ls_q_inst1.mem_inst && store_res_station[0].valid && ~ls_q_inst1.l_s  || 
-    ls_q_inst1.valid && ls_q_inst1.mem_inst && ((~store_queue[front_store].r1 || ~store_queue[front_store].r2) && ~ls_q_inst1.l_s)) begin
-    
-            action_store = push;
-        end
-        else if((~empty_store && (~ls_q_inst1.mem_inst || ls_q_inst1.l_s) && ~store_res_station[0].valid && store_queue[front_store].r1 && store_queue[front_store].r2)) begin
-                
-                action_store = pop;
-        end
-        else if(~empty_store && ls_q_inst1.valid && ls_q_inst1.mem_inst && ~ls_q_inst1.l_s && ~store_res_station[0].valid && store_queue[front_store].r1 && store_queue[front_store].r2) begin
-                action_store = push_pop;
-        end
-
-
 end
+//     //verify logic
+//     action_load = none;
+//     action_store = none;
+//     if(empty_load && ls_q_inst1.valid && ls_q_inst1.mem_inst && ls_q_inst1.l_s || 
+//     ~full_load && ls_q_inst1.valid && ls_q_inst1.mem_inst && load_res_station[0].valid && ls_q_inst1.l_s  || 
+//     ~full_load && ls_q_inst1.valid && ls_q_inst1.mem_inst && ((~load_queue[front_load].r1 || ~load_queue[front_load].r2) && ls_q_inst1.l_s)) begin
+    
+//             action_load = push;
+//         end
+//         else if((~empty_load && (~ls_q_inst1.mem_inst || ~ls_q_inst1.l_s) && ~load_res_station[0].valid && load_queue[front_load].r1 && load_queue[front_load].r2) || 
+//                 full_load && ~load_res_station[0].valid && load_queue[front_load].r1 && load_queue[front_load].r2) begin
+                
+//                 action_load = pop;
+//         end
+//         else if(~empty_load && ls_q_inst1.valid && ls_q_inst1.mem_inst && ls_q_inst1.l_s && ~load_res_station[0].valid && load_queue[front_load].r1 && load_queue[front_load].r2) begin
+//                 action_load = push_pop;
+//         end
+
+
+// if(empty_store && ls_q_inst1.valid && ls_q_inst1.mem_inst && ~ls_q_inst1.l_s || 
+//     ~full_store && ls_q_inst1.valid && ls_q_inst1.mem_inst && store_res_station[0].valid && ~ls_q_inst1.l_s  || 
+//     ~full_store && ls_q_inst1.valid && ls_q_inst1.mem_inst && ((~store_queue[front_store].r1 || ~store_queue[front_store].r2) && ~ls_q_inst1.l_s)) begin
+    
+//             action_store = push;
+//         end
+//         else if((~empty_store && (~ls_q_inst1.mem_inst || ls_q_inst1.l_s) && ~store_res_station[0].valid && store_queue[front_store].r1 && store_queue[front_store].r2) || 
+//                 full_store && ~store_res_station[0].valid && store_queue[front_store].r1 && store_queue[front_store].r2) begin
+                
+//                 action_store = pop;
+//         end
+//         else if(~empty_store && ls_q_inst1.valid && ls_q_inst1.mem_inst && ~ls_q_inst1.l_s && ~store_res_station[0].valid && store_queue[front_store].r1 && store_queue[front_store].r2) begin
+//                 action_store = push_pop;
+//         end
+// end
 
 // combinational assignments of the dequeued load queue and store queue data
 always_comb begin
-lo1 = 'x;
-so1 = 'x;
-if(action_load == pop || action_load == push_pop) lo1 = load_queue[front_load];
-else begin
-  lo1.valid = 1'b0;
-  lo1.mem_inst = 1'b0;
-end
-if(action_store == pop || action_store == push_pop) so1 = store_queue[front_store];
-else begin
-  so1.valid = 1'b0;
-  so1.mem_inst = 1'b0;
-end
+    lo1 = 'x;
+    so1 = 'x;
+    if(load_pop) lo1 = load_queue[front_load];
+    else begin
+        lo1.valid = 1'b0;
+        lo1.mem_inst = 1'b0;
+    end
+    if(store_pop) so1 = store_queue[front_store];
+    else begin
+        so1.valid = 1'b0;
+        so1.mem_inst = 1'b0;
+    end
 end
 
 //Updataing front and rear pointers
@@ -526,7 +552,7 @@ always_ff @(posedge clk) begin
             store_queue[i].rs1_v <= 'x;
             store_queue[i].rs2_v <= 'x;
             store_queue[i].r1 <= 1'b0;
-            store_queue[i].r2 <= 1'b0;
+            store_queue[i].r2 <= 1'b0; 
             store_queue[i].ls_imm <= 'x;
             store_queue[i].age <= 'x;
             store_queue[i].speculation_bit <= 'x;
@@ -542,89 +568,139 @@ always_ff @(posedge clk) begin
     end
 
     else begin
-        if(action_load == none) begin
-            front_load <= front_load;
-            rear_load <= rear_load;
-        end
-        else if(action_load == push) begin
-            rear_load <= (rear_load + 1) % l_q_depth;
-            if(front_load == -1) front_load <= 0;
-            else front_load <= front_load;
-            for(int i=0; i< l_q_depth; i++) begin
-                if(i == ((rear_load + 1) % l_q_depth) )
-                begin
-                    load_queue[(rear_load + 1) % l_q_depth] <= ls_q_inst1;
-                    //load_store_queue[(rear + 1) % ls_q_depth].rob_id_dest <= rob_id_dest;
+        ////////////
+        // Load
+        ////////////
+        // push
+        rear_load <= (rear_load + load_enqueue_no) % l_q_depth;
+        if (load_enqueue_no == 1) begin
+            for (int i=0; i<SS_DISPATCH_WIDTH; i++) begin
+                if(load_push[i]) begin
+                    
+                    // Update front load from empty state
+                    if(front_load == -1) front_load <= 0;
+                    else front_load <= front_load;
+    
+                    load_queue[(rear_load + 1) % l_q_depth] <= ls_q_inst1[i];
+                end
+            end
+        end else if (load_enqueue_no == 2) begin
+            for (int i=0; i<decode_ports; i++) begin
+                if(load_push[i]) begin
+                    
+                    // Update front load from empty state
+                    if(front_load == -1) front_load <= 0;
+                    else front_load <= front_load;
+
+                    load_queue[(rear_load + 1 + i) % l_q_depth] <= ls_q_inst1[i];
+
                 end
             end
         end
 
-        else if(action_load == 2'b10)begin
+        // pop
+        if(load_pop)begin
            // ls_q_o <= load_store_queue[front];
             load_queue[front_load].issued <= 1'b1;
-            if(front_load == rear_load) begin
+
+            //load_queue[front_load].r1 <= 0;
+            //load_queue[front_load].r2 <= 0;
+            //load_queue[front_load].valid <= 0;
+            if(front_load == rear_load && !load_push[1] && !load_push[0]) begin
                 front_load <= -1;
                 rear_load <= -1;
+            end else if (front_load == rear_load && load_enqueue_no == 1) begin
+                front_load <= (front_load + 1) % l_q_depth;
+                rear_load <= (rear_load + 1) % l_q_depth;
+            end else if (front_load == rear_load && load_enqueue_no == 2) begin
+                front_load <= (front_load + 1) % l_q_depth;
+                rear_load <= (rear_load + 2) % l_q_depth;
             end
+
             else front_load <= (front_load + 1) % l_q_depth;
         end
 
-        else if(action_load == 2'b11) begin
-            load_queue[front_load].issued <= 1'b1;
-            //load_queue[front_load].dmem_load_addr <= dmem_load_addr;
-            front_load <= (front_load + 1) % l_q_depth;
-            rear_load <= (rear_load + 1) % l_q_depth;
-           // ls_q_o <= load_store_queue[front];
-            for(int i=0; i< l_q_depth; i++) begin
-                if(i == ((rear_load + 1) % l_q_depth) )
-                begin
-                    load_queue[(rear_load + 1) %l_q_depth] <= ls_q_inst1;
-                    //load_store_queue[(rear + 1) % ls_q_depth].rob_id_dest <= rob_id_dest;
+        // // push pop
+        // else if(action_load == 2'b11) begin
+        //     load_queue[front_load].issued <= 1'b1;
+        //     //load_queue[front_load].dmem_load_addr <= dmem_load_addr;
+        //     front_load <= (front_load + 1) % l_q_depth;
+        //     rear_load <= (rear_load + 1) % l_q_depth;
+        //    // ls_q_o <= load_store_queue[front];
+        //     for(int i=0; i< l_q_depth; i++) begin
+        //         if(i == ((rear_load + 1) % l_q_depth) )
+        //         begin
+        //             load_queue[(rear_load + 1) %l_q_depth] <= ls_q_inst1;
+        //             //load_store_queue[(rear + 1) % ls_q_depth].rob_id_dest <= rob_id_dest;
+        //         end
+        //     end
+        // end
+
+        ////////////
+        // Store
+        ////////////
+        // push
+        rear_store <= (rear_store + store_enqueue_no) % s_q_depth;
+        if (store_enqueue_no == 1) begin
+            for (int i=0; i<decode_ports; i++) begin
+                if(store_push[i]) begin
+                    
+                    // Update front load from empty state
+                    if(front_store == -1) front_store <= 0;
+                    else front_store <= front_store;
+
+                    store_queue[(rear_store + 1) % s_q_depth] <= ls_q_inst1[i];
+                end
+            end
+        end else if (store_enqueue_no == 2) begin
+            for (int i=0; i<decode_ports; i++) begin
+                if(store_push[i]) begin
+                    
+                    // Update front load from empty state
+                    if(front_store == -1) front_store <= 0;
+                    else front_store <= front_store;
+
+                    store_queue[(rear_store + 1 + i) % s_q_depth] <= ls_q_inst1[i];
                 end
             end
         end
 
-        if(action_store == none) begin
-            front_store <= front_store;
-            rear_store <= rear_store;
-        end
-        else if(action_store == push) begin
-            rear_store <= (rear_store + 1) % s_q_depth;
-            if(front_store == -1) front_store <= 0;
-            else front_store <= front_store;
-            for(int i=0; i< s_q_depth; i++) begin
-                if(i == ((rear_store + 1) % s_q_depth) )
-                begin
-                    store_queue[(rear_store + 1) % s_q_depth] <= ls_q_inst1;
-                    //load_store_queue[(rear + 1) % ls_q_depth].rob_id_dest <= rob_id_dest;
-                end
-            end
-        end
-
-        else if(action_store == 2'b10)begin
+        if(store_pop)begin
            // ls_q_o <= load_store_queue[front];
             store_queue[front_store].issued <= 1'b1;
-            if(front_store == rear_store) begin
+
+            //store_queue[front_store].rs1_v <= '0;
+            //store_queue[front_store].rs2_v <= '0;
+            //store_queue[front_store].r1 <= '0;
+            //store_queue[front_store].r2 <= '0;
+            //store_queue[front_store].valid <= '0;
+            if(front_store == rear_store && !store_push[1] && !store_push[0]) begin
                 front_store <= -1;
                 rear_store <= -1;
+            end else if (front_store == rear_store && store_enqueue_no == 1) begin
+                front_store <= (front_store + 1) % s_q_depth;
+                rear_store <= (rear_store + 1) % s_q_depth;
+            end else if (front_store == rear_store && store_enqueue_no == 2) begin
+                front_store <= (front_store + 1) % s_q_depth;
+                rear_store <= (rear_store + 2) % s_q_depth;
             end
+
             else front_store <= (front_store + 1) % s_q_depth;
         end
 
-        else if(action_store == 2'b11) begin
-            store_queue[front_store].issued <= 1'b1;
-            front_store <= (front_store + 1) % s_q_depth;
-            rear_store <= (rear_store + 1) % s_q_depth;
-           // ls_q_o <= load_store_queue[front];
-            for(int i=0; i< s_q_depth; i++) begin
-                if(i == ((rear_store + 1) % s_q_depth) )
-                begin
-                    store_queue[(rear_store + 1) %s_q_depth] <= ls_q_inst1;
-                    //load_store_queue[(rear + 1) % ls_q_depth].rob_id_dest <= rob_id_dest;
-                end
-            end
-        end
-        
+        // else if(action_store == 2'b11) begin
+        //     store_queue[front_store].issued <= 1'b1;
+        //     front_store <= (front_store + 1) % s_q_depth;
+        //     rear_store <= (rear_store + 1) % s_q_depth;
+        //    // ls_q_o <= load_store_queue[front];
+        //     for(int i=0; i< s_q_depth; i++) begin
+        //         if(i == ((rear_store + 1) % s_q_depth) )
+        //         begin
+        //             store_queue[(rear_store + 1) %s_q_depth] <= ls_q_inst1;
+        //             //load_store_queue[(rear + 1) % ls_q_depth].rob_id_dest <= rob_id_dest;
+        //         end
+        //     end
+        // end
         
         
         for(int i=0; i < s_q_depth; i++) begin
