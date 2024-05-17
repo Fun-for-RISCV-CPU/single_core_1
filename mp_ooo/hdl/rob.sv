@@ -30,12 +30,10 @@ import rv32i_types::*;
     // Output ports
     output rob_reg_data_bus_t   [data_wb_ports-1:0]     rob_reg_data_bus,
     output rvfi_data_t                                  rvfi_output,
-    output  logic [depth_bits-1:0]    tail_ptr,
-	output	rob_to_btb_bus  pc_at_commit
+    output  logic [depth_bits-1:0]    tail_ptr
 );
 
-    localparam                          DEPTH = 2**depth_bits;
-    localparam  bit [depth_bits-1:0]    FULL = '1;
+    localparam  DEPTH = 2**depth_bits;
 
     rvfi_data_t [DEPTH-1:0]            rvfi_data_arr; // RVFI data that will be in parallel to ROB entry
 
@@ -44,38 +42,11 @@ import rv32i_types::*;
     logic [63:0]              order;
     logic [63:0]              order_next;
     logic [depth_bits-1:0]    rob_count, rob_count_next;
-    
-    //Logic for gshare branch_predictor
-    
-    //logic for pipelining stuff from ex data bus
-    
-   // ex_data_bus_t                                 ex_data_bus[ex_ports];
-    
-   // always_ff @(posedge clk) begin
-  //  for(int i = 0; i < ex_ports; i++) begin
-   //     ex_data_bus[i] <= ex_data_bus_int[i];
-  //  end
-  //  end
-    
-    
-	
-	
-// Updating ROB to BTB bus	
-always_comb begin
-pc_at_commit.branch_resol = rob_arr[tail_ptr].rd_data[0];
-pc_at_commit.branch_inst = rob_arr[tail_ptr].branch_inst;
-pc_at_commit.pred_branch_address = rob_arr[tail_ptr].branch_address;
-pc_at_commit.pc = rob_arr[tail_ptr].pc;
-pc_at_commit.ready = rob_arr[tail_ptr].ready;
-pc_at_commit.valid = rob_arr[tail_ptr].valid;
-pc_at_commit.jal_inst = rob_arr[tail_ptr].jal_inst;
-end
-
 
 always_comb begin
 
     // ROB full logic
-    if (rob_count >= (FULL - 2'b10)) begin
+    if (rob_count >= unsigned'(2**depth_bits)-2) begin
         rob_full = 1'b1;
     end else begin
         rob_full = 1'b0;
@@ -189,35 +160,15 @@ always_ff @(posedge clk) begin
             // Branch instruction flush if prediction is incorrect
             // Case 1: Branch Misprediction
             // Case 2: Jump Instruction
-			//Prediction was correct
             if ((rob_arr[tail_ptr].branch_inst &&
-                (rob_arr[tail_ptr].branch_pred == rob_arr[tail_ptr].rd_data[0]))) begin
-                branch_miss <= 1'b0;
-                br_address  <= rob_arr[tail_ptr].rd_data[0] ? (rob_arr[tail_ptr].branch_address) : (rob_arr[tail_ptr].pc + 'd4);
+                (rob_arr[tail_ptr].branch_resol != rob_arr[tail_ptr].rd_data[0])) ||
+                rob_arr[tail_ptr].jump_inst) begin
+                branch_miss <= 1'b1;
+                br_address  <= rob_arr[tail_ptr].branch_address;
             end
-			else if ((rob_arr[tail_ptr].branch_inst &&
-                (rob_arr[tail_ptr].branch_pred != rob_arr[tail_ptr].rd_data[0]))) begin
-				branch_miss <= 1'b1;
-				br_address <= rob_arr[tail_ptr].rd_data[0]? rob_arr[tail_ptr].branch_address : (rob_arr[tail_ptr].pc + 4);
-				end
-        
-        else if(rob_arr[tail_ptr].jal_inst && rob_arr[tail_ptr].branch_pred) begin
-            branch_miss <= 1'b0;
-	          br_address  <= rob_arr[tail_ptr].branch_address;	
-        end
-        
-         else if(rob_arr[tail_ptr].jal_inst && !rob_arr[tail_ptr].branch_pred) begin
-            branch_miss <= 1'b1;
-	          br_address  <= rob_arr[tail_ptr].branch_address;	
-        end
-        
-				else if(rob_arr[tail_ptr].jump_inst && !rob_arr[tail_ptr].jal_inst) begin
-					 branch_miss <= 1'b1;
-					 br_address  <= rob_arr[tail_ptr].branch_address;	
-				end
             else if (load_mispredict) begin
                 branch_miss <= 1'b1;
-                br_address  <= rob_arr[tail_ptr].pc + 'd4;
+                br_address  <= rob_arr[tail_ptr].pc + 4;
             end
             else begin
                 branch_miss <= 1'b0;
@@ -245,9 +196,8 @@ always_ff @(posedge clk) begin
                 rob_arr[head_ptr + 0].valid         <= 1'b1;
                 rob_arr[head_ptr + 0].branch_inst   <= decode_rob_bus[0].branch_inst;
                 rob_arr[head_ptr + 0].jump_inst     <= decode_rob_bus[0].jump_inst;
-                rob_arr[head_ptr + 0].jal_inst     <= decode_rob_bus[0].jal_inst;
                 rob_arr[head_ptr + 0].mem_inst      <= decode_rob_bus[0].mem_inst;
-                rob_arr[head_ptr + 0].branch_pred  <= decode_rob_bus[0].branch_pred;
+                rob_arr[head_ptr + 0].branch_resol  <= decode_rob_bus[0].branch_resol;
                 rob_arr[head_ptr + 0].branch_address <= decode_rob_bus[0].branch_address;
                 rob_arr[head_ptr + 0].pc            <= decode_rob_bus[0].pc;
                 rob_arr[head_ptr + 0].rd_addr       <= decode_rob_bus[0].rd_addr;
@@ -274,7 +224,7 @@ always_ff @(posedge clk) begin
                 // Loading result of branch instruction
 
                 // JALR
-                if (rob_arr[ex_data_bus[i].rob_id].jump_inst) begin
+                if (rob_arr[ex_data_bus[i].rob_id].jump_inst && rob_arr[ex_data_bus[i].rob_id].branch_inst) begin
                     rob_arr[ex_data_bus[i].rob_id].branch_address <= ex_data_bus[i].rd_data & 32'hfffffffe;
                     rvfi_data_arr[ex_data_bus[i].rob_id].monitor_pc_wdata <= ex_data_bus[i].rd_data & 32'hfffffffe;
                     

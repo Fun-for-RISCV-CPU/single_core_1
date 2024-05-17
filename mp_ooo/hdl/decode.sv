@@ -12,8 +12,7 @@ import rv32i_types::*;
     output  decode_rob_bus_t            decode_rob_bus,
     output  inst_decode                 decode_rs_bus,
     output  ls_q_entry                  ls_q_inst1,
-    input    logic  [rob_size-1:0]      rob_id_dest,
-	input	 logic			branch_pred
+    input    logic  [rob_size-1:0]      rob_id_dest
 );
     logic   [31:0]      rs1_d; // register data 1 
     logic   [31:0]      rs2_d; // register data 2
@@ -38,18 +37,13 @@ import rv32i_types::*;
 
     // Variables for branching
     logic               branch_inst;
-    logic               jal_inst;
     logic               jump_inst;
     logic               mem_inst;
+    logic               branch_resol;
     logic   [31:0]      branch_address;
 
     logic   [4:0]       rd_addr;
-    logic               regf_we;
-
-	//Send to btb
-//	assign pc_at_decode = queue_packet[63:32];
-
-	
+    logic               regf_we; 
 
     // get pc from queue packet
     logic   [31:0]      pc;
@@ -93,10 +87,9 @@ import rv32i_types::*;
     assign decode_rob_bus.branch_inst       = branch_inst;
     assign decode_rob_bus.jump_inst         = jump_inst;
     assign decode_rob_bus.mem_inst          = mem_inst;
-    assign decode_rob_bus.branch_pred      =  branch_pred;
+    assign decode_rob_bus.branch_resol      = branch_resol;
     assign decode_rob_bus.branch_address    = branch_address;
     assign decode_rob_bus.pc                = pc;
-    assign decode_rob_bus.jal_inst               = jal_inst;
     assign decode_rob_bus.rd_addr           = rd_addr;
     
     // Route to rob for rvfi
@@ -138,9 +131,8 @@ import rv32i_types::*;
         rs2_addr = rs2_s;
         regf_we = 1'b0;
         branch_inst = 1'b0;
-        jal_inst = 1'b0;
         jump_inst = 1'b0;
-        //branch_pred = 1'b0;
+        branch_resol = 1'b0;
         branch_address = 'x;
         ls_q_inst1.mem_inst = 1'b0;
         ls_q_inst1.l_s = 'x;
@@ -157,13 +149,6 @@ import rv32i_types::*;
         ls_q_inst1.issued = 'x;
         ls_q_inst1.speculation_bit = 'x;
         age_next = ls_q_inst1.age;
-        ls_q_inst1.dmem_addr = 'x;
-        ls_q_inst1.dmem_addr = 1'b0;
-        ls_q_inst1.ready_for_mem = 'x;
-        ls_q_inst1.address_computed = 'x;
-        ls_q_inst1.dmem_wmask = 'x;
-        ls_q_inst1.dmem_wdata = 'x;
-        ls_q_inst1.dmem_wdata_computed = 1'b0;
         
 
         rd_addr = inst[11:7];
@@ -185,26 +170,24 @@ import rv32i_types::*;
                 regf_we = 1'b1;
                 branch_inst = 1'b0;
                 jump_inst = 1'b1;
-                jal_inst = 1'b1;
-                branch_address = pc + j_imme;
                 // Need to correct using BTB
-                //branch_resol = 1'b0;
+                branch_resol = 1'b0;
             end
             op_b_jalr: begin
                 rs2_addr = '0;
                 regf_we = 1'b1;
-                branch_inst = 1'b0;
+                branch_inst = 1'b1;
                 jump_inst = 1'b1;
                 // Static not taken: need to update when there is a branch predictor
                 // Need to correct using BTB
-                //branch_resol = 1'b0;
+                branch_resol = 1'b0;
             end
             op_b_br : begin
                 rd_addr = '0;
                 regf_we = 1'b1;
                 branch_inst = 1'b1;
                 // Static not taken: need to update when there is a branch predictor
-                //branch_resol = 1'b0;
+                branch_resol = 1'b0;
                 // Immediately send branch address to ROB, calculate T/NT in ex unit
                 branch_address = pc + b_imme;
             end
@@ -224,7 +207,6 @@ import rv32i_types::*;
                 ls_q_inst1.issued = 1'b0;
                 ls_q_inst1.speculation_bit = 1'b1;
                 age_next = ls_q_inst1.age + 1'b1;
-                ls_q_inst1.ready_for_mem = 1'b0;
                 
                 
             end
@@ -242,10 +224,7 @@ import rv32i_types::*;
                 ls_q_inst1.rob_id = rs1_data.rob_id;
                 ls_q_inst1.rob_id2 = rs2_data.rob_id;
                 ls_q_inst1.issued = 1'b0;
-                ls_q_inst1.ready_for_mem = 'x;
                 age_next = ls_q_inst1.age + 1'b1;
-                ls_q_inst1.address_computed = 1'b0;
-                ls_q_inst1.dmem_wmask = '0;
 		    
             end
             op_b_imm: begin

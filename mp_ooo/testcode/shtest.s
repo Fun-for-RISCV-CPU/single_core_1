@@ -23,14 +23,7 @@ _start:
 
     sw x4, 0(x5)
 
-    jal x0, tmp0
-    nop
-    nop
-    nop
-    nop
-    nop
-
-tmp0:    lb x3, 0(x5)
+    lb x3, 0(x5)
     lb x3, 1(x5)
     lb x3, 2(x5)
     lb x3, 3(x5)

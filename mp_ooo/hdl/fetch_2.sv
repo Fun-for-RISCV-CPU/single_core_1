@@ -14,30 +14,27 @@ import rv32i_types::*;
     input   fetch_reg_1_t           fetch_1_reg,
     output  logic   [63:0]          inst_out,
     output  logic                   valid_inst, 
-    output  logic                   imem_stall,
-    output  logic           queue_full,
-    output  logic           branch_pred
-    
+    output  logic                   imem_stall
 );  
 
     logic [1:0]     action;
     logic           empty;
+    logic           queue_full;
     logic           valid_bit;
-    logic [65:0]    queue_packet;
+    logic [64:0]    queue_packet;
 
     instruction_q instruction_q(
         .clk(clk),
         .rst(rst),
         .branch_mispredict(branch_mispredict),
-        .inst_in({valid_bit,  fetch_1_reg.branch_pred, fetch_1_reg.pc, inst_in}),
+        .inst_in({valid_bit, fetch_1_reg.pc, inst_in}),
         .action(action),
         .empty(empty),
         .full(queue_full),
         .inst_out(queue_packet)
     );
 
-    assign valid_inst = queue_packet[65];
-    assign branch_pred = queue_packet[64];
+    assign valid_inst = queue_packet[64];
     assign inst_out   = queue_packet[63:0];
 
     always_comb begin
@@ -84,7 +81,7 @@ import rv32i_types::*;
                 action = pop;
             end
         end else begin
-            if (reservation_full || rob_full) begin
+            if (reservation_full || rob_full && imem_resp) begin
                 if (imem_resp) begin
                     action = push;
                     valid_bit = 1'b1;

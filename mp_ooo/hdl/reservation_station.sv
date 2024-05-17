@@ -70,11 +70,6 @@ always_comb begin
     if((busy_stations == size - 1 && inst1.valid) || busy_stations == size) full = 1'b1;
 
 end
-
-
-
-
-
 always_ff @(posedge clk) begin
     // rst signal clears all the data in rservation station
     // Flush all stations on mispredict
@@ -366,8 +361,8 @@ always_ff @(posedge clk) begin
            // rvfi_rs1_v <= rs_data[i].rs1_v;
             // rvfi_rs2_v <= rs_data[i].rs2_v;
             rs_data[i].valid <= '0;
-            rs_data[i].rs1_v <= 'x;
-            rs_data[i].rs2_v <= 'x;
+            rs_data[i].rs1_v <= '0;
+            rs_data[i].rs2_v <= '0;
             rs_data[i].rob_id <= 'x;
             rs_data[i].rob_id2 <= 'x;
             rs_data[i].rob_id_dest <= 'x;

@@ -1,6 +1,6 @@
 module load_store
 import rv32i_types::*;
-#(parameter l_q_depth = 4, s_q_depth = 4,  ld_res_station = 1, str_res_station = 1, rob_size = ROB_ID_SIZE)
+#(parameter l_q_depth = 8, s_q_depth = 8,  ld_res_station = 1, str_res_station = 1, rob_size = ROB_ID_SIZE)
 (
     input logic clk,
     input logic rst,
@@ -13,79 +13,29 @@ import rv32i_types::*;
     output logic full_load, empty_load, full_store, empty_store,
     output ls_rob_data_bus_t load_rob_data_bus, store_rob_data_bus,
     output ls_mem_bus_t mem_input,
-    output  logic   [31:0]  dmem_addr,
-    output  logic   [3:0]   dmem_rmask,
-    output  logic   [3:0]   dmem_wmask,
-    output  logic   [31:0]  dmem_wdata,
     input logic[1:0] mem_state
 );
 
 logic [31:0] dmem_store_addr, dmem_load_addr, dmem_store_wdata;
 logic   [1:0] action_load, action_store;
 logic [3:0] dmem_store_wmask;
-logic [s_q_depth - 1:0][31:0]       address_array;
 logic  load_sent_to_mem, store_sent_to_mem;
-logic [31:0] res_rd_data, res_rdata;
-logic  res_data_forwarded;
-
-logic [s_q_depth -1 :0][31:0] storeq_rd_data, storeq_rdata;
-logic  [s_q_depth -1 :0] storeq_data_forwarded;
-
-
 ls_q_entry load_queue[l_q_depth], lo1, so1;
 ls_q_entry store_queue[s_q_depth];
 load_res_station_entry load_res_station[ld_res_station];
 store_res_station_entry store_res_station[str_res_station];
 int front_load, rear_load, front_store, rear_store;
-assign full_load = (front_load == ((rear_load+2) % l_q_depth) || front_load == ((rear_load+1) % l_q_depth));
+
+assign full_load = (front_load == ((rear_load+1) % l_q_depth));
 assign empty_load = (front_load == -1);
-assign full_store = (front_store == ((rear_store+2) % s_q_depth) || front_store == ((rear_store+1) % s_q_depth));
+assign full_store = (front_store == ((rear_store+1) % s_q_depth));
 assign empty_store = (front_store == -1);
-
-generate for (genvar i = 0; i < s_q_depth; i++) begin
-    adder adder(
-        .a(store_queue[i].rs1_v),
-        .b(store_queue[i].ls_imm),
-        .out(address_array[i])
-    );
-    
-    ls_forwarding ls_forwarding(
-.rmask(load_res_station[0].dmem_rmask),
-.wmask(store_queue[i].dmem_wmask),
-.funct3(load_res_station[0].funct3),
-.wdata(store_queue[i].dmem_wdata),
-.dmem_addr(load_res_station[0].dmem_addr),
-.rdata(storeq_rdata[i]),
-.rd_data(storeq_rd_data[i]),
-.data_forwarded(storeq_data_forwarded[i])
-);
-
-
-
-end endgenerate
-
-ls_forwarding ls_f_res_station(
-.rmask(load_res_station[0].dmem_rmask),
-.wmask(store_res_station[0].dmem_wmask),
-.funct3(load_res_station[0].funct3),
-.wdata(store_res_station[0].dmem_wdata),
-.dmem_addr(load_res_station[0].dmem_addr),
-.rdata(res_rdata),
-.rd_data(res_rd_data),
-.data_forwarded(res_data_forwarded)
-
-);
 
 
 always_comb begin
     
     dmem_load_addr = 'x;
     dmem_store_addr = 'x;
-    dmem_wmask = '0;
-     dmem_rmask = '0;
-     dmem_wdata = 'x;
-     dmem_addr = 'x;
-    
     
      load_rob_data_bus.ready = 1'b0;
     load_rob_data_bus.valid = 1'b0;
@@ -96,7 +46,6 @@ always_comb begin
     load_rob_data_bus.dmem_wdata = 'x;
     load_rob_data_bus.dmem_addr = 'x;
     load_rob_data_bus.dmem_rdata = 'x;
-    load_rob_data_bus.rd_data = 'x;
     load_rob_data_bus.rs1_v = 'x;
     load_rob_data_bus.rs2_v = 'x;
 
@@ -112,8 +61,8 @@ always_comb begin
     store_rob_data_bus.rs1_v = 'x;
     store_rob_data_bus.rs2_v = 'x;
 
-    if(load_res_station[0].valid && (load_res_station[0].data_forwarded || load_res_station[0].ready_for_mem)) begin
-        load_rob_data_bus.ready = load_res_station[0].data_forwarded;
+    if(load_res_station[0].valid) begin
+        load_rob_data_bus.ready = 1'b0;
         load_rob_data_bus.valid = 1'b1;
         load_rob_data_bus.rob_id = load_res_station[0].rob_id_dest;
         load_rob_data_bus.rd_data = 'x;
@@ -121,8 +70,7 @@ always_comb begin
         load_rob_data_bus.dmem_wmask = '0;
         load_rob_data_bus.dmem_wdata = 'x;
         load_rob_data_bus.dmem_addr = load_res_station[0].dmem_addr;
-        load_rob_data_bus.dmem_rdata = load_res_station[0].dmem_rdata;
-         load_rob_data_bus.rd_data = load_res_station[0].rd_data;
+        load_rob_data_bus.dmem_rdata = 'x;
         load_rob_data_bus.rs1_v = load_res_station[0].rs1_v;
         load_rob_data_bus.rs2_v = 'x;
     end
@@ -154,29 +102,21 @@ always_comb begin
     && (store_res_station[0].rob_id_dest == rob_tail_ptr)
     && (mem_state == mem_idle)) begin
         mem_input.dmem_wmask = store_res_station[0].dmem_wmask;
-        dmem_wmask = store_res_station[0].dmem_wmask;
-        mem_input.dmem_wdata = store_res_station[0].dmem_wdata;
-        dmem_wdata = store_res_station[0].dmem_wdata;
+        mem_input.dmem_wdata =store_res_station[0].dmem_wdata;
         mem_input.dmem_addr = store_res_station[0].dmem_addr;
-        dmem_addr = {store_res_station[0].dmem_addr[31:2], 2'b00};
         mem_input.dmem_rmask = '0;
-        dmem_rmask = '0;
         mem_input.valid = 1'b1;
         store_sent_to_mem = 1'b1;
         mem_input.rob_id = store_res_station[0].rob_id_dest;
          mem_input.funct3 = 'x;
     end
     else if(load_res_station[0].valid 
-    && (load_res_station[0].ready_for_mem)
+    && (load_res_station[0].rob_id_dest == rob_tail_ptr)
     && (mem_state == mem_idle)) begin
         mem_input.dmem_wmask = '0;
-         dmem_wmask = '0;
         mem_input.dmem_wdata = 'x;
-        dmem_wdata = 'x;
         mem_input.dmem_addr =  {load_res_station[0].dmem_addr};
-        dmem_addr = {load_res_station[0].dmem_addr[31:2], 2'b00};
         mem_input.dmem_rmask = load_res_station[0].dmem_rmask;
-        dmem_rmask = load_res_station[0].dmem_rmask;
         mem_input.rob_id = load_res_station[0].rob_id_dest;
         load_sent_to_mem = 1'b1;
          mem_input.valid = 1'b1;
@@ -187,27 +127,22 @@ end
 
 // Filling load and store reservation stations with dequed data 
 always_ff @(posedge clk) begin
-    if(rst || branch_mispredict || load_sent_to_mem || load_res_station[0].data_forwarded) begin
+    if(rst || branch_mispredict || load_sent_to_mem) begin
         for(int i=0;i < ld_res_station; i++) begin
             load_res_station[i].valid <= 1'b0;
-            load_res_station[i].dmem_addr <= 'x;  
+            load_res_station[i].dmem_addr <= 'x;
             load_res_station[i].age <= 'x;
             load_res_station[i].rob_id_dest <= 'x;
             load_res_station[i].dmem_rdata <= 'x;
             load_res_station[i].rd_data <= 'x;
             load_res_station[i].dmem_rmask <= '0;
             load_res_station[i].funct3 <= 'x; 
-            load_res_station[i].rs1_v <= 'x;
-            load_res_station[i].ready_for_mem <= 1'b0;
-            load_res_station[i].data_forwarded <= 1'b0;
+            load_res_station[i].rs1_v <= 'x; 
         end
     end
 
     else begin
-    
-              load_res_station[0].data_forwarded <= 1'b0;
-              load_res_station[0].dmem_rdata <= 'x;
-              load_res_station[0].rd_data <= 'x;
+        
         if(lo1.valid) begin
             load_res_station[0].valid <= lo1.valid;
             load_res_station[0].dmem_addr <= lo1.rs1_v + lo1.ls_imm;
@@ -216,177 +151,13 @@ always_ff @(posedge clk) begin
             load_res_station[0].dmem_rdata <= 'x;
             load_res_station[0].rd_data <= 'x;
             load_res_station[0].funct3 <= lo1.funct3;
-            load_res_station[0].rs1_v <= lo1.rs1_v;
-            load_res_station[0].ready_for_mem <= lo1.ready_for_mem;
-            
+            load_res_station[0].rs1_v <= lo1.rs1_v; 
             unique case (lo1.funct3)
             lb, lbu: load_res_station[0].dmem_rmask <= 4'b0001 << dmem_load_addr[1:0];
             lh, lhu: load_res_station[0].dmem_rmask <= 4'b0011 << dmem_load_addr[1:0];
             lw:      load_res_station[0].dmem_rmask <= 4'b1111;
             default: load_res_station[0].dmem_rmask <= 'x;
         endcase
-        end
-        
-        else begin
-            //logic to send load to mem
-        if(!load_res_station[0].valid) load_res_station[0].ready_for_mem <= 1'b0;
-        else begin
-        if(store_res_station[0].valid && (store_res_station[0].age > load_res_station[0].age)) begin
-            load_res_station[0].ready_for_mem <= 1'b1;
-            //load_res_station[0].data_forwarded <= 1'b0;
-        end
-        
-        else if(store_res_station[0].valid && (store_res_station[0].age < load_res_station[0].age) && (store_res_station[0].dmem_addr[31:2] == load_res_station[0].dmem_addr[31:2])) begin
-                  load_res_station[0].ready_for_mem <= 1'b0;
-                  //load_res_station[0].data_forwarded <= res_data_forwarded;
-                  //load_res_station[0].dmem_rdata <= res_rdata;
-                  //load_res_station[0].rd_data <= res_rd_data;
-        end
-        
-        else begin
-            if(empty_store) begin
-                load_res_station[0].ready_for_mem <= 1'b1;
-            end
-            
-            else begin
-                for(int i=0; i < s_q_depth; i++) begin
-                    if(((front_store + i) % s_q_depth) == rear_store) begin
-                        if(store_queue[rear_store].address_computed) begin
-                            if(store_queue[rear_store].valid && ((store_queue[rear_store].age > load_res_station[0].age) 
-                            || ((store_queue[rear_store].age < load_res_station[0].age) && (store_queue[rear_store].dmem_addr[31:2] != load_res_station[0].dmem_addr[31:2])))) begin
-                                  load_res_station[0].ready_for_mem <= 1'b1;
-                                  //load_res_station[0].data_forwarded <= 1'b0;
-                                  break;
-                            end
-                            else if(!store_queue[rear_store].valid) begin
-                                  load_res_station[0].ready_for_mem <= 1'b1;
-                                  //load_res_station[0].data_forwarded <= 1'b0;
-                                  break;
-                            end
-                            else begin
-                                  if(!store_queue[rear_store].dmem_wdata_computed) begin
-                                      load_res_station[0].ready_for_mem <= 1'b0;
-                                      //load_res_station[0].data_forwarded <= 1'b0;
-                                      break;
-                                  end
-                                  else begin
-                                      load_res_station[0].ready_for_mem <= 1'b0;
-                                     // load_res_station[0].data_forwarded <= storeq_data_forwarded[rear_store];
-                                      //load_res_station[0].dmem_rdata <= storeq_rdata[rear_store];
-                                     // load_res_station[0].rd_data <= storeq_rd_data[rear_store];
-                                      break;
-                                  end
-                            end
-                        end
-                        else begin
-                             if((store_queue[rear_store].valid && (store_queue[rear_store].age > load_res_station[0].age) ) || !store_queue[rear_store].valid) begin
-                                load_res_station[0].ready_for_mem <= 1'b1;
-                               // load_res_station[0].data_forwarded <= 1'b0;
-                                break;
-                            end
-                            else begin
-                                load_res_station[0].ready_for_mem <= 1'b0;
-                               // load_res_station[0].data_forwarded <= 1'b0;
-                                break; 
-                            end
-                        end
-                    end
-                    else begin
-                          if(store_queue[(front_store + i) % s_q_depth].address_computed) begin 
-                              if(store_queue[(front_store + i) % s_q_depth].valid && (store_queue[(front_store + i) % s_q_depth].age > load_res_station[0].age)) begin
-                                  load_res_station[0].ready_for_mem <= 1'b1;
-                                 // load_res_station[0].data_forwarded <= 1'b0;
-                                  break;
-                              end
-                              
-                              else if(store_queue[(front_store + i) % s_q_depth].valid && (store_queue[(front_store + i) % s_q_depth].age < load_res_station[0].age) 
-                              && (store_queue[(front_store + i) % s_q_depth].dmem_addr[31:2] == load_res_station[0].dmem_addr[31:2]) ) begin
-                                    if(!store_queue[(front_store + i) % s_q_depth].dmem_wdata_computed) begin
-                                      load_res_station[0].ready_for_mem <= 1'b0;
-                                      //load_res_station[0].data_forwarded <= 1'b0;
-                                      break;
-                                  end
-                                  else begin
-                                      load_res_station[0].ready_for_mem <= 1'b0;
-                                     // load_res_station[0].data_forwarded <= storeq_data_forwarded[(front_store + i) % s_q_depth];
-                                     // load_res_station[0].dmem_rdata <= storeq_rdata[(front_store + i) % s_q_depth];
-                                     // load_res_station[0].rd_data <= storeq_rd_data[(front_store + i) % s_q_depth];
-                                      break;
-                                  end
-                              end
-                          end
-                          else begin
-                                  if(store_queue[(front_store + i) % s_q_depth].valid && (store_queue[(front_store + i) % s_q_depth].age > load_res_station[0].age)) begin
-                                  load_res_station[0].ready_for_mem <= 1'b1;
-                                 // load_res_station[0].data_forwarded <= 1'b0;
-                                  break;
-                              end
-                              
-                              else begin
-                                  load_res_station[0].ready_for_mem <= 1'b0;
-                                  //load_res_station[0].data_forwarded <= 1'b0;
-                                  break;
-                              end
-                          end
-                    end
-                end
-                end
-            end
-        end
-        // logic for data forwarding
-        if(empty_store) begin
-                if(store_res_station[0].valid && (store_res_station[0].age < load_res_station[0].age) && (store_res_station[0].dmem_addr[31:2] == load_res_station[0].dmem_addr[31:2])) begin
-                     load_res_station[0].data_forwarded <= res_data_forwarded;
-                     load_res_station[0].dmem_rdata <= res_rdata;
-                     load_res_station[0].rd_data <= res_rd_data;
-                end       
-        end
-        else begin
-                for(int i=0; i < s_q_depth; i++) begin
-                        if(((rear_store - i + s_q_depth) % s_q_depth) == front_store) begin
-                                if(store_queue[front_store].valid && (store_queue[front_store].age < load_res_station[0].age) &&
-                                 (store_queue[front_store].dmem_addr[31:2] == load_res_station[0].dmem_addr[31:2])) begin
-                                        if(store_queue[front_store].dmem_wdata_computed) begin
-                                          load_res_station[0].data_forwarded <= storeq_data_forwarded[front_store];
-                                          load_res_station[0].dmem_rdata <= storeq_rdata[front_store];
-                                          load_res_station[0].rd_data <= storeq_rd_data[front_store];
-                                          break; 
-                                      end
-                                      else begin
-                                           load_res_station[0].data_forwarded <= 1'b0;
-                                          load_res_station[0].dmem_rdata <= 'x;
-                                          load_res_station[0].rd_data <= 'x;
-                                          break;
-                                      end       
-                                end
-                                else begin
-                                     if(store_res_station[0].valid && (store_res_station[0].age < load_res_station[0].age) && (store_res_station[0].dmem_addr[31:2] == load_res_station[0].dmem_addr[31:2])) begin
-                                         load_res_station[0].data_forwarded <= res_data_forwarded;
-                                         load_res_station[0].dmem_rdata <= res_rdata;
-                                         load_res_station[0].rd_data <= res_rd_data;
-					 break;
-                                    end 
-                                    else begin
-                                        load_res_station[0].data_forwarded <= 1'b0;
-                                          load_res_station[0].dmem_rdata <= 'x;
-                                          load_res_station[0].rd_data <= 'x;
-                                          break;
-                                    end  
-                                end
-                        end
-                        else begin
-                               if(store_queue[(rear_store - i + s_q_depth) % s_q_depth].valid && (store_queue[(rear_store - i + s_q_depth) % s_q_depth].age < load_res_station[0].age) && 
-                               (store_queue[(rear_store - i + s_q_depth) % s_q_depth].dmem_addr[31:2] == load_res_station[0].dmem_addr[31:2]) 
-                               && store_queue[(rear_store - i + s_q_depth) % s_q_depth].dmem_wdata_computed) begin
-                                        load_res_station[0].data_forwarded <= storeq_data_forwarded[(rear_store - i + s_q_depth) % s_q_depth];
-                                        load_res_station[0].dmem_rdata <= storeq_rdata[(rear_store - i + s_q_depth) % s_q_depth];
-                                        load_res_station[0].rd_data <= storeq_rd_data[(rear_store - i + s_q_depth) % s_q_depth];
-                                        break;
-                               end 
-                        end
-                    
-                end
-        end
         end
 
     end
@@ -440,12 +211,13 @@ always_comb begin
     action_load = none;
     action_store = none;
     if(empty_load && ls_q_inst1.valid && ls_q_inst1.mem_inst && ls_q_inst1.l_s || 
-    ls_q_inst1.valid && ls_q_inst1.mem_inst && load_res_station[0].valid && ls_q_inst1.l_s  || 
-    ls_q_inst1.valid && ls_q_inst1.mem_inst && ((~load_queue[front_load].r1 || ~load_queue[front_load].r2) && ls_q_inst1.l_s)) begin
+    ~full_load && ls_q_inst1.valid && ls_q_inst1.mem_inst && load_res_station[0].valid && ls_q_inst1.l_s  || 
+    ~full_load && ls_q_inst1.valid && ls_q_inst1.mem_inst && ((~load_queue[front_load].r1 || ~load_queue[front_load].r2) && ls_q_inst1.l_s)) begin
     
             action_load = push;
         end
-        else if((~empty_load && (~ls_q_inst1.mem_inst || ~ls_q_inst1.l_s) && ~load_res_station[0].valid && load_queue[front_load].r1 && load_queue[front_load].r2)) begin
+        else if((~empty_load && (~ls_q_inst1.mem_inst || ~ls_q_inst1.l_s) && ~load_res_station[0].valid && load_queue[front_load].r1 && load_queue[front_load].r2) || 
+                full_load && ~load_res_station[0].valid && load_queue[front_load].r1 && load_queue[front_load].r2) begin
                 
                 action_load = pop;
         end
@@ -455,12 +227,13 @@ always_comb begin
 
 
 if(empty_store && ls_q_inst1.valid && ls_q_inst1.mem_inst && ~ls_q_inst1.l_s || 
-    ls_q_inst1.valid && ls_q_inst1.mem_inst && store_res_station[0].valid && ~ls_q_inst1.l_s  || 
-    ls_q_inst1.valid && ls_q_inst1.mem_inst && ((~store_queue[front_store].r1 || ~store_queue[front_store].r2) && ~ls_q_inst1.l_s)) begin
+    ~full_store && ls_q_inst1.valid && ls_q_inst1.mem_inst && store_res_station[0].valid && ~ls_q_inst1.l_s  || 
+    ~full_store && ls_q_inst1.valid && ls_q_inst1.mem_inst && ((~store_queue[front_store].r1 || ~store_queue[front_store].r2) && ~ls_q_inst1.l_s)) begin
     
             action_store = push;
         end
-        else if((~empty_store && (~ls_q_inst1.mem_inst || ls_q_inst1.l_s) && ~store_res_station[0].valid && store_queue[front_store].r1 && store_queue[front_store].r2)) begin
+        else if((~empty_store && (~ls_q_inst1.mem_inst || ls_q_inst1.l_s) && ~store_res_station[0].valid && store_queue[front_store].r1 && store_queue[front_store].r2) || 
+                full_store && ~store_res_station[0].valid && store_queue[front_store].r1 && store_queue[front_store].r2) begin
                 
                 action_store = pop;
         end
@@ -508,13 +281,6 @@ always_ff @(posedge clk) begin
             load_queue[i].age <= 'x;
             load_queue[i].speculation_bit <= 'x;
             load_queue[i].issued <= 1'b0;
-            load_queue[i].address_computed <= 1'b0;
-            load_queue[i].dmem_addr <= 'x;
-            load_queue[i].ready_for_mem <= 1'b0;
-            load_queue[i].dmem_wdata <= 'x;
-            load_queue[i].dmem_wmask <= '0;
-            load_queue[i].dmem_wdata_computed <= '0;
-            
         end
 
         for(int i=0; i< s_q_depth; i++) begin
@@ -531,12 +297,6 @@ always_ff @(posedge clk) begin
             store_queue[i].age <= 'x;
             store_queue[i].speculation_bit <= 'x;
             store_queue[i].issued <= 1'b0;
-            store_queue[i].address_computed <= 1'b0;
-            store_queue[i].dmem_addr <= 'x;
-            store_queue[i].ready_for_mem <= 'x;
-            store_queue[i].dmem_wdata <= 'x;
-            store_queue[i].dmem_wmask <= '0;
-            store_queue[i].dmem_wdata_computed <= '0;
         end
 
     end
@@ -571,7 +331,7 @@ always_ff @(posedge clk) begin
 
         else if(action_load == 2'b11) begin
             load_queue[front_load].issued <= 1'b1;
-            //load_queue[front_load].dmem_load_addr <= dmem_load_addr;
+            load_queue[front_load].dmem_load_addr <= dmem_load_addr;
             front_load <= (front_load + 1) % l_q_depth;
             rear_load <= (rear_load + 1) % l_q_depth;
            // ls_q_o <= load_store_queue[front];
@@ -624,35 +384,7 @@ always_ff @(posedge clk) begin
                 end
             end
         end
-        
-        
-        
-        for(int i=0; i < s_q_depth; i++) begin
-            if((store_queue[i].r2 == 1'b1) && (store_queue[i].address_computed) && store_queue[i].valid && !store_queue[i].dmem_wdata_computed) begin
-                 unique case (store_queue[i].funct3)
-                      sb: store_queue[i].dmem_wdata[8 *store_queue[i].dmem_addr[1:0] +: 8 ] <= store_queue[i].rs2_v[7 :0];
-                      sh: store_queue[i].dmem_wdata[16* store_queue[i].dmem_addr[1]   +: 16] <= store_queue[i].rs2_v[15:0];
-                      sw: store_queue[i].dmem_wdata <= store_queue[i].rs2_v;
-                      default: store_queue[i].dmem_wdata <= 'x;
-               endcase
-               store_queue[i].dmem_wdata_computed <= 1'b1;
-            end
-            
-        end
-        for(int i=0; i < s_q_depth; i++) begin
-            if((store_queue[i].r1 == 1'b1) && (!store_queue[i].address_computed) && store_queue[i].valid) begin
-                
-                store_queue[i].dmem_addr <= address_array[i];
-                store_queue[i].address_computed <= 1'b1; 
-                   unique case (store_queue[i].funct3)
-                        sb: store_queue[i].dmem_wmask <= 4'b0001 <<  address_array[i][1:0];
-                        sh: store_queue[i].dmem_wmask <= 4'b0011 <<  address_array[i][1:0];
-                        sw: store_queue[i].dmem_wmask <= 4'b1111;
-                        default: store_queue[i].dmem_wmask <= 'x;
-                  endcase 
-            end 
-        end
-        
+
         for(int i=0; i < l_q_depth; i++) begin
             if((load_queue[i].r1 == 1'b0) && (rob_data_bus[load_queue[i].rob_id].ready) && load_queue[i].valid) begin
                 load_queue[i].rs1_v <= rob_data_bus[load_queue[i].rob_id].rd_data;

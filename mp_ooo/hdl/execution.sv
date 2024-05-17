@@ -71,7 +71,6 @@ import rv32i_types::*;
     input logic clk,
     input logic rst,
     input rs_d rs_data,
-    input branch_mispredict,
     output  mult_inst_bit,
     output  done_inst,
     output start_inst,
@@ -98,34 +97,7 @@ import rv32i_types::*;
     logic   [1:0]   mul_type;
     logic   [31:0]  mul_in_1;
     logic   [31:0]  mul_in_2;
-    
     logic valid;
-    // Signals for divider
-    logic div_inst, start_div, div_complete, state_div, state_div_next,complete, divide_by_zero, divider_bypass_check;
-    logic [31:0] div_inp_a, div_inp_b, quotient, remainder, quotient2, remainder2;
-    
-    always_comb begin
-        div_inp_a = rs_data.rs1_v;
-        div_inp_b = rs_data.rs2_v;
-        case (funct3)
-            div: begin
-                div_inp_a = is_neg(rs_data.rs1_v) ? negative(rs_data.rs1_v) : rs_data.rs1_v;
-                div_inp_b = is_neg(rs_data.rs2_v) ? negative(rs_data.rs2_v) : rs_data.rs2_v;
-            end
-            
-            rem: begin
-                 div_inp_a = is_neg(rs_data.rs1_v) ? negative(rs_data.rs1_v) : rs_data.rs1_v;
-                 div_inp_b = is_neg(rs_data.rs2_v) ? negative(rs_data.rs2_v) : rs_data.rs2_v;
-            end
-        endcase
-    
-    end
-    
-    
-    
-    //Divider stuff
-    assign divider_bypass_check = divider_bypass(div_inp_a, div_inp_b);
-    assign div_complete = complete || divide_by_zero;
 
     assign done_inst = done;
     assign start_inst = start;
@@ -167,83 +139,31 @@ import rv32i_types::*;
         .br_en(cmp_out)
     );
 
-    wallace_multiplier wallace_multiplier(
+    shift_add_multiplier shift_add(
         .clk(clk),
         .rst(rst),
         .start(start),
         .mul_type(mul_type),
-        .branch_mispredict(branch_mispredict),
         .a(mul_in_1),
         .b(mul_in_2),
         .p(mul_out),
         .done(done)
     );
     
-    new_divider new_divider(
-    .inst_clk(clk),
-    .rst(rst),
-    .inst_start(start_div),
-    .inst_a(div_inp_a),
-    .inst_b(div_inp_b),
-    .complete_inst(complete),
-    .branch_mispredict(branch_mispredict),
-    .divide_by_0(divide_by_zero),
-    .quotient_inst(quotient),
-    .remainder_inst(remainder)
-    );
-    
-    
-    always_ff @(posedge clk) begin
-    if(rst) begin
-        state_div <= div_idle;
-    end
-    else begin
-        state_div <= state_div_next;
-    end
-    end
-    
     always_comb begin
-        state_div_next = state_div;
-        start_div = 1'b0;
-        case (state_div)
-            div_idle: begin
-                state_div_next = (div_inst && valid && rs_data.r1 && rs_data.r2 && ~divider_bypass_check) ? div_compute : div_idle;
-                start_div = (div_inst && valid && rs_data.r1 && rs_data.r2 && ~divider_bypass_check) ? 1'b1: 1'b0;
-            end
-            
-            div_compute: begin
-                state_div_next = (div_inst && valid && rs_data.r1 && rs_data.r2 && div_complete) ? div_idle : div_compute;
-                start_div = 1'b0;
-            end
-            
-        endcase
-    
-    end
-    always_comb begin
-         // The instruction is multiply or divide
+         // The instruction is multiply
         mult_inst = 1'b0;
-        div_inst = 1'b0;
-        if (rs_data.opcode == op_b_reg && rs_data.funct7 == 7'b0000001 && valid && ((funct3 == mul) || (funct3 == mulh) || (funct3 ==mulhsu) || (funct3 == mulhu))) begin
+        if (rs_data.opcode == op_b_reg && rs_data.funct7 == 7'b0000001 && valid) begin
             mult_inst = 1'b1;
         end
-        
-        if (rs_data.opcode == op_b_reg && rs_data.funct7 == 7'b0000001 && valid && ((funct3 == div) || (funct3 == divu) || (funct3 == rem) || (funct3 == remu))) begin
-            div_inst = 1'b1;
-        end
-
+        // mult_inst = (rs_data.opcode == op_b_reg) && (rs_data.funct7 == 7'b0000001);
         if (mult_inst && valid) begin   
             ready = done && rs_data.r1 && rs_data.r2;
-            start = (rs_data.r1 && rs_data.r2) || done;
-        end
-        
-        else if(div_inst && valid) begin
-            ready = ~divider_bypass_check && valid && rs_data.r1 && rs_data.r2 && div_complete && !start_div || divider_bypass_check && valid && rs_data.r1 && rs_data.r2;
-            start = 1'b0;
-            
+            start = rs_data.r1 && rs_data.r2 || done;
         end
         else begin
             ready =  rs_data.r1 && rs_data.r2;
-            start = 1'b0;      
+            start = 1'b0;
         end
 
         unique case (funct3)
@@ -282,133 +202,11 @@ import rv32i_types::*;
                 out = mul_out[31:0];
             end
         end
-        
-        else if(div_inst) begin
-            case (funct3)
-              div: begin
-                  if(divider_bypass_check) begin
-                          out = ((is_neg(div_inp_a)) ^ (is_neg(div_inp_a))) ? negative(quotient2) : quotient2; 
-                  end
-                  else begin
-                      case (divide_by_zero)
-                          1'b1: begin
-                            out = 32'h80000000;
-                          end
-                          1'b0: begin
-                          out = ((is_neg(div_inp_a)) ^ (is_neg(div_inp_a))) ? negative(quotient) : quotient;   
-                          end
-                      endcase
-                  end
-              end
-              
-              rem: begin
-                   if(divider_bypass_check) begin
-                        out = ((is_neg(div_inp_a)) ^ (is_neg(div_inp_a))) ? negative(remainder2) : remainder2;
-                   end
-                   else begin
-                       case (divide_by_zero)
-                          1'b1: begin
-                            out = div_inp_a;
-                          end
-                          1'b0: begin
-                          out = ((is_neg(div_inp_a)) ^ (is_neg(div_inp_a))) ? negative(remainder) : remainder;   
-                          end
-                      endcase
-                  end
-              end
-              
-               divu: begin
-                   if(divider_bypass_check) begin
-                       out = quotient2; 
-                   end
-                   else begin
-                       case (divide_by_zero)
-                          1'b1: begin
-                            out = 32'hffffffff;
-                          end
-                          1'b0: begin
-                          out = quotient;  
-                          end
-                      endcase
-                  end
-              end
-              
-              remu: begin
-                   if(divider_bypass_check) begin
-                        out = remainder2;
-                   end
-                   else begin
-                       case (divide_by_zero)
-                          1'b1: begin
-                            out = div_inp_a;
-                          end
-                          1'b0: begin
-                          out = remainder;  
-                          end
-                      endcase
-                  end
-              end
-              default: begin
-                  out = 'x;
-              end
-           endcase 
-        end
         else begin
             out = alu_out;
         end
     end
-    
-    always_comb begin
-        quotient2 = '0;
-        remainder2 = '0;
-        
-        if(div_inp_a == '0) begin
-            quotient2 = '0;
-            remainder2 = '0;
-        end
-        
-        else if(div_inp_b > div_inp_a) begin
-            quotient2 = '0;
-            remainder2 = div_inp_a;
-        end
-        
-        else if(div_inp_a == div_inp_b) begin
-            quotient2 = 1;
-            remainder2 = 0;
-        end
-        
-        else if(div_inp_b == 1) begin
-            quotient2 = div_inp_a;
-            remainder2 = '0;
-        end
-        
-        else if((div_inp_a == 1) && (div_inp_b != 1)) begin
-                quotient2 = 0;
-                remainder2 = 1;
-        end
-        
-       // else if(power2(div_inp_b)) begin
-       // quotient2 = div_inp_a >> $clog2(div_inp_b);
-       // remainder2 = div_inp_a & (div_inp_b - 1);
-       // end
-    end
-   
-function logic is_neg(logic [31:0] data);
-		return data[31];
-endfunction
 
-	function logic [31:0] negative(logic [31:0] data);
-		return (~data) + 1;
-	endfunction
-
-function logic divider_bypass(logic [31:0] a, logic [31:0] b);
-    if((a==b) || (a == 0) || ((a==1) || (b==1)) || (b > a)) begin
-        return 1;
-        end
-     else return 0;
- endfunction
- 
-	
 endmodule : execution_unit
 
 
@@ -418,7 +216,6 @@ import rv32i_types::*;
 (
     input clk,
     input rst,
-    input branch_mispredict,
     input rs_d rs_data[n_exec],
     output ex_data_bus_t data_bus[n_exec]
 );
@@ -431,7 +228,6 @@ import rv32i_types::*;
             .clk(clk),
             .rst(rst),
             .mult_inst_bit(mul_inst[i]),
-            .branch_mispredict(branch_mispredict),
             .done_inst(done_inst[i]),
             .start_inst(start_inst[i]),
             .rs_data(rs_data[i]),

@@ -3,13 +3,15 @@
 
 import subprocess
 import math
-import os
 
 FAIL = '\033[91m'
 ENDC = '\033[0m'
 
 # get from synthesis
 AREA = 1
+
+# TBD
+POWER = 1
 
 # add more performance counters here!
 perf_counters = [
@@ -29,43 +31,23 @@ perf_counters = [
     # leave these for benchmarking
     'Segment IPC',
     'Segment Time',
-    'Power',
     'Test Weight',
     'Weighted Benchmark Score', 
-    'Branch counter',
-    'Branch mispredict',
-    'Imem miss',
-    'Dmem miss',
-    'Dmem call',
-    'Reservation_full',
-    'Rob full',
-    'Load full',
-    'Store full',
-    'Load forward',
-    'Inst count',
-    'Cycle count',
-    'Dispatch',
-    'Queue empty'
 ]
-weighting_const = 9926.12616
+
 # test, weight
 benchmarks = {
-    # all benchmark weights are computed as:
-    # 1 or 2 depending on test importance
-    # divided by number of instructions for that test without the full M extension
-    # times a constant so the sum of weights is close to 1
-    'fft.elf' : weighting_const * 2 / 134941,
-    'graph.elf' : weighting_const * 1 / 115028,
-    # 'rsa.elf' : weighting_const * 1 / 158470,
-    'compression.elf' : weighting_const * 2 / 90633,
-    'dna.elf' : weighting_const * 1 / 104740,
-    'mergesort.elf' : weighting_const * 1 / 92136,
-    # 'physics.elf' : weighting_const * 2 / 226354,
-    'sudoku.elf' : weighting_const * 1 / 76170,
-    '../coremarks/coremark_im.elf': weighting_const * 2 / 308350,
+    'fft.elf' : 1,
+    'graph.elf' : 1,
+    'rsa.elf' : 1,
+    'compression.elf' : 1,
+    'dna.elf' : 1,
+    'mergesort.elf' : 1,
+    'physics.elf' : 1,
+    'sudoku.elf' : 1,
     # uncomment these if you have div/rem instructions working
-    'physics_d.elf' : 1,
-    'rsa_d.elf': 1
+    # 'physics_d.elf' : 1,
+    # 'rsa_d.elf': 1
 }
 
 def run_program(prog):
@@ -88,17 +70,6 @@ def run_program(prog):
                 break    
     
     return True, perf_count_info
-
-def run_power(prog):
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    os.chdir("../synth")
-    result = subprocess.run(['make', 
-                             'power'], stdout=subprocess.PIPE)
-    
-    power_result = subprocess.run(['python3', 
-                             'get_power.py'], stdout=subprocess.PIPE)
-    os.chdir("../sim")
-    return float(power_result.stdout.decode())
 
 def to_markdown(bench_info, full_score, filepath):
     with open(filepath, "w") as f:
@@ -126,16 +97,13 @@ def main():
         print(f'Processing {benchmark}')
         prog = f'../testcode/competition_suite/{benchmark}'
         sim_passed, info = run_program(prog)
-        print(f'Running power on {benchmark}')
-        power = run_power(prog)
         if sim_passed:
-            test_score = weight * math.sqrt(AREA) * power * (float(info['Segment Time']))**3
+            test_score = weight * math.sqrt(AREA) * POWER * (float(info['Segment Time']))**2
         else:
             print(f"{FAIL}Sim failed on program {prog}, please investigate{ENDC}")
             test_score = 1e50
         info['Weighted Benchmark Score'] = test_score
         info['Test Weight'] = weight
-        info['Power'] = power
         all_bench_info[benchmark] = info
         total_score += test_score
     to_markdown(all_bench_info, total_score, 'benchmark_results.md')

@@ -6,7 +6,11 @@ import rv32i_types::*;
     input logic rst,
     input logic branch_mispredict,
     output mem_rob_data_bus_t mem_rob_data_o,
+    output  logic   [31:0]  dmem_addr,
+    output  logic   [3:0]   dmem_rmask,
+    output  logic   [3:0]   dmem_wmask,
     input   logic   [31:0]  dmem_rdata,
+    output  logic   [31:0]  dmem_wdata,
     input   logic           dmem_resp,
     input ls_mem_bus_t mem_input,
     output logic [1:0] mem_state
@@ -35,12 +39,24 @@ always_comb begin
     mem_rob_data_o.dmem_rdata = 'x;
     mem_rob_data_o.store = 'x;
     
+    dmem_rmask = '0;
+    dmem_wmask = '0;
+    dmem_addr = 'x;
+    dmem_wdata = 'x;
     case (mem_state)
     mem_idle: begin
         if(mem_input.valid) begin
-        state_next = mem_resp_wait;
+        state_next = mem_req;
         end
         else state_next = mem_idle;
+    end
+    mem_req: begin
+    
+           dmem_rmask = mem_inp_intermediate.dmem_rmask;
+           dmem_wmask = mem_inp_intermediate.dmem_wmask;
+           dmem_addr =  {mem_inp_intermediate.dmem_addr[31:2], 2'b00};
+           dmem_wdata = mem_inp_intermediate.dmem_wdata;
+           state_next = mem_resp_wait;
     end
     mem_resp_wait: begin
         if(dmem_resp) begin

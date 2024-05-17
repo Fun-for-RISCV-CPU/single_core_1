@@ -30,9 +30,16 @@ _setup:
 _fini:
     .cfi_startproc
     beq zero, zero, _fini
-    .rept 256
     nop
-    .endr
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
     .cfi_endproc
 
 .section ".tohost"

@@ -2,49 +2,10 @@
 //  Maybe use some of your types from mp_pipeline here?    //
 //    Note you may not need to use your stage structs      //
 /////////////////////////////////////////////////////////////
-package cache_types; 
-localparam OFFSET = 5;
-localparam N_SET = 4;
-localparam TAG_SIZE = 32-N_SET-OFFSET;
-typedef enum bit [2:0] {
-    idle = 3'b000,
-    compare = 3'b001,
-    allocate = 3'b010,
-    write_back = 3'b011,
-    cache_wait = 3'b100
-} cache_states;
-
-typedef enum bit [1:0] {
-    adapter_idle = 2'b00,
-    read = 2'b01,
-    write = 2'b10,
-    response = 2'b11
-} adapter_states;
-
-typedef enum bit {
-    arb_idle = 1'b0,
-    arb_write = 1'b1
-} arbiter_states;
-
-typedef struct packed{
-    logic                       valid;
-    logic   [TAG_SIZE-1:0]      tag;
-    logic   [4:0]               offset;
-    logic   [N_SET-1:0]         set;  
-    logic   [3:0]               wmask;
-    logic   [31:0]              wdata;
-} cache_stage_reg_t;
-
-typedef struct packed{
-  logic   [31:0]  address;
-  logic   [255:0] cache_line;
-} pre_fetch_buffer_t;
-
-endpackage
 
 package rv32i_types;
 
-    localparam  ROB_ID_SIZE = 4;
+    localparam  ROB_ID_SIZE = 3;
     localparam  EX_UNITS = 3;
 
     typedef enum logic [6:0] {
@@ -76,7 +37,6 @@ package rv32i_types;
 
     typedef struct packed{
         logic           valid;
-        logic           branch_pred;
         logic   [31:0]  pc;
     } fetch_reg_1_t;
 
@@ -107,9 +67,8 @@ package rv32i_types;
         logic                   valid; // Used to locate instructions that were in reservation stations but need to be flushed
         logic                   branch_inst;
         logic                   jump_inst;
-        logic                   jal_inst;
         logic    mem_inst;
-        logic                   branch_pred;
+        logic                   branch_resol;
         logic   [31:0]          branch_address;
         //logic   [ROB_ID_SIZE-1:0] rob_id;
         logic   [31:0]          pc;
@@ -127,9 +86,8 @@ package rv32i_types;
         logic                  ready;
         logic                  branch_inst;
         logic                  jump_inst;
-        logic                  jal_inst;
         logic    mem_inst;
-        logic                  branch_pred;
+        logic                  branch_resol;
         logic   [31:0]         branch_address;
         logic   [31:0]         pc;
         logic   [4:0]          rd_addr;
@@ -191,17 +149,8 @@ package rv32i_types;
         mul = 3'b000,
         mulh = 3'b001,
         mulhsu = 3'b010,
-        mulhu = 3'b011,
-        div = 3'b100,
-        divu = 3'b101,
-        rem  = 3'b110,
-        remu = 3'b111
+        mulhu = 3'b011
     } mult_ops;
-    
-    typedef enum bit {
-        div_idle  = 1'b0, //check bit 30 for sub if op_reg opcode
-        div_compute  = 1'b1
-    } div_state;
     
       typedef enum bit [2:0] {
         beq  = 3'b000,
@@ -211,24 +160,6 @@ package rv32i_types;
         bltu = 3'b110,
         bgeu = 3'b111
     } branch_funct3_t;
-    
-    typedef enum bit [1:0] {
-        snt  = 2'b00, //check bit 30 for sub if op_reg opcode
-        wnt  = 2'b01,
-        wt  = 2'b10,
-        st = 2'b11
-    } bimod_counter;
-    
-      typedef enum bit [3:0] {
-        NT3  = 4'b0000, //check bit 30 for sub if op_reg opcode
-        NT2  = 4'b0001,
-        NT1  = 4'b0010,
-        NT0  = 4'b0100,
-        WT0  = 4'b0101,
-        WT1 = 4'b0110,
-        WT2 = 4'b0111,
-        WT3 = 4'b1000
-    } trimod_counter;
     
      typedef enum bit [1:0] {
         mem_idle  = 2'b00,
@@ -295,12 +226,7 @@ package rv32i_types;
         logic    [15:0]  age;
         logic    speculation_bit;
         logic    issued;
-        logic    address_computed;
-		logic    [31:0] dmem_addr;
-    logic   ready_for_mem;
-    logic    [31:0] dmem_wdata;
-    logic    [3:0] dmem_wmask;
-    logic      dmem_wdata_computed;
+		logic    [31:0] dmem_load_addr;
       } ls_q_entry;
       
       typedef struct packed{
@@ -350,8 +276,6 @@ package rv32i_types;
 		logic					valid;
 		logic	[15:0]			age;
 		logic    [31:0] dmem_addr;
-  logic      ready_for_mem;
-  logic      data_forwarded;
       }load_res_station_entry;
       
        typedef struct packed{
@@ -375,24 +299,5 @@ package rv32i_types;
         logic   [31:0]          dmem_rdata;
         logic                   store;
       } mem_rob_data_bus_t;
-      
-
-		
-			typedef struct packed{
-    logic [31:0] pc;
-		logic	branch_resol;
-		logic	branch_inst;
-    logic  jal_inst;
-   logic ready;
-   logic valid;
-		logic	[31:0] pred_branch_address;
-		} rob_to_btb_bus;
-		
-		typedef struct packed{
-		logic 	[31:0] pred_address;
-		logic	[31:0] pc;
-		logic	[1:0] bimod_counter;
-    logic	[3:0] trimod_counter;
-		} btb_entry;
 
 endpackage
